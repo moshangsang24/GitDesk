@@ -1,7 +1,11 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useState } from 'react';
-import type { CSSProperties, KeyboardEvent, RefObject } from 'react';
+import type { CSSProperties, KeyboardEvent, MouseEvent, RefObject } from 'react';
 import { ResizeHandle } from '../../components/ui/ResizeHandle';
+import { longRef } from '../../core/graph/refs';
+import { showContextMenu } from '../../services/context-menu';
+import { copy } from '../menus/actions';
+import { commitMenu, refMenu } from '../menus/menus';
 import { graphGeometry, graphPalette } from '../../core/graph/types';
 import { useDisplayPreferences } from '../settings/preferences';
 import { authorColor, authorInitials, formatCommitAge, formatFullDate, formatShortDate } from './commit-display';
@@ -22,19 +26,26 @@ const refKinds: Record<RefLabel['kind'], string> = {
   head: 'HEAD', local: 'Local branch', remote: 'Remote-tracking branch', tag: 'Tag',
 };
 
-function RefBadge({ label, color }: { label: RefLabel; color: string }) {
+type RefMenuHandler = (label: RefLabel, event: MouseEvent) => void;
+
+function RefBadge({ label, color, onMenu }: { label: RefLabel; color: string; onMenu?: RefMenuHandler }) {
   if (label.kind === 'head') {
     return <span className="ref-badge ref-head" title="HEAD" role="img" aria-label="HEAD" />;
   }
   return (
-    <span className={`ref-badge ref-${label.kind}`} style={{ '--ref-color': color } as CSSProperties} title={`${refKinds[label.kind]}: ${label.name}`}>
+    <span
+      className={`ref-badge ref-${label.kind}`}
+      style={{ '--ref-color': color } as CSSProperties}
+      title={`${refKinds[label.kind]}: ${label.name}`}
+      onContextMenu={onMenu && ((event) => { event.stopPropagation(); onMenu(label, event); })}
+    >
       <span className="ref-mark" aria-hidden="true" />
       <span className="truncate">{label.name}</span>
     </span>
   );
 }
 
-function RefBadges({ refs, limit, color }: { refs: RefLabel[]; limit: number; color: string }) {
+function RefBadges({ refs, limit, color, onMenu }: { refs: RefLabel[]; limit: number; color: string; onMenu?: RefMenuHandler }) {
   // The HEAD marker is a compact ring, so it does not use up one of the visible label slots.
   const head = refs.filter(({ kind }) => kind === 'head');
   const named = refs.filter(({ kind }) => kind !== 'head');
@@ -43,12 +54,12 @@ function RefBadges({ refs, limit, color }: { refs: RefLabel[]; limit: number; co
   return (
     <div className="ref-labels">
       {head.map((label) => <RefBadge key="head" label={label} color={color} />)}
-      {visible.map((label) => <RefBadge key={`${label.kind}-${label.name}`} label={label} color={color} />)}
+      {visible.map((label) => <RefBadge key={`${label.kind}-${label.name}`} label={label} color={color} onMenu={onMenu} />)}
       {overflow.length > 0 && (
         <details className="ref-overflow" onClick={(event) => event.stopPropagation()}>
           <summary className="ref-badge ref-more" aria-label={`Show ${overflow.length} more references`}>+{overflow.length}</summary>
           <span className="ref-overflow-list">
-            {overflow.map((label) => <RefBadge key={`${label.kind}-${label.name}`} label={label} color={color} />)}
+            {overflow.map((label) => <RefBadge key={`${label.kind}-${label.name}`} label={label} color={color} onMenu={onMenu} />)}
           </span>
         </details>
       )}
@@ -83,6 +94,8 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
   const visibility = useGitDesk((state) => state.refVisibility);
   const repoId = useGitDesk((state) => state.repoId);
   const loadMore = useGitDesk((state) => state.loadMoreHistory);
+  const setScope = useGitDesk((state) => state.setScope);
+  const locateCommit = useGitDesk((state) => state.locateCommit);
   const absoluteDates = useDisplayPreferences((state) => state.absoluteDates);
   const { commits, graphRows } = data;
   const [widths, setWidths] = useState<Partial<Record<keyof typeof columnLimits, number>>>({});
@@ -134,7 +147,44 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
     void openCommit(commit.oid);
   }
 
+  const focusBranch = (fullName: string) => { void setScope('ref', fullName); };
+
+  function showCommitMenu(commit: Commit, point: { x: number; y: number }) {
+    gridRef.current?.focus({ preventScroll: true });
+    // Right-click selects the row first so the menu always acts on the selection.
+    if (!tracking && selectedOid !== commit.oid) void openCommit(commit.oid);
+    void showContextMenu(commitMenu(commit, { copy, focusBranch }), point);
+  }
+
+  function showRefMenu(commit: Commit, label: RefLabel, event: MouseEvent) {
+    event.preventDefault();
+    if (label.kind === 'head') return;
+    const fullName = longRef(label.kind, label.name);
+    void showContextMenu(refMenu(
+      { kind: label.kind, fullName, name: label.name, targetOid: commit.oid },
+      { copy, focusBranch, locate: (oid) => { void locateCommit(oid); } },
+    ), { x: event.clientX, y: event.clientY });
+  }
+
+  function handleGridMenu(event: MouseEvent<HTMLDivElement>) {
+    // Keyboard-opened menus (⇧F10) target the grid itself; use the selected row.
+    if (event.target !== event.currentTarget) return;
+    event.preventDefault();
+    const commit = commits[selectedIndex];
+    if (!commit) return;
+    const rect = document.getElementById(`commit-${commit.oid}`)?.getBoundingClientRect();
+    showCommitMenu(commit, rect ? { x: rect.left + 160, y: rect.bottom - 4 } : { x: event.clientX, y: event.clientY });
+  }
+
   function handleKey(event: KeyboardEvent<HTMLDivElement>) {
+    if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'c') {
+      const commit = commits[selectedIndex];
+      if (commit && window.getSelection()?.isCollapsed !== false) {
+        event.preventDefault();
+        copy(commit.oid, 'commit hash');
+      }
+      return;
+    }
     if (event.target !== event.currentTarget) return;
     let index: number;
     if (event.key === 'ArrowDown') index = Math.min(commits.length - 1, selectedIndex + 1);
@@ -171,6 +221,7 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
       aria-colcount={(showHash ? 6 : 5) + (releaseStatus ? 3 : 0) + (tracking ? 1 : 0)}
       aria-activedescendant={activeDescendant}
       onKeyDown={handleKey}
+      onContextMenu={handleGridMenu}
     >
       <div className="history-header history-columns" role="row" aria-rowindex={1}>
         {tracking && <span role="columnheader" aria-label="Track commit" />}
@@ -211,9 +262,10 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
               data-match={isMatch || undefined}
               data-even={index % 2 === 0 || undefined}
               onClick={() => { gridRef.current?.focus({ preventScroll: true }); choose(commit); }}
+              onContextMenu={(event) => { event.preventDefault(); showCommitMenu(commit, { x: event.clientX, y: event.clientY }); }}
             >
               {tracking && <span className="history-track-cell" role="gridcell"><input type="checkbox" checked={tracking.ids.includes(commit.oid)} aria-label={`Track ${commit.subject}`} onClick={(event) => event.stopPropagation()} onChange={() => tracking.onToggle(commit.oid)} /></span>}
-              <div role="gridcell" className="history-ref-cell"><RefBadges refs={refs} limit={compactRefs ? 1 : 2} color={graphPalette[graph.colorId % graphPalette.length]} /></div>
+              <div role="gridcell" className="history-ref-cell"><RefBadges refs={refs} limit={compactRefs ? 1 : 2} color={graphPalette[graph.colorId % graphPalette.length]} onMenu={(label, event) => showRefMenu(commit, label, event)} /></div>
               <span role="gridcell" className="graph-column" title={graph.nodeKind === 'boundary' ? 'Shallow history boundary' : graph.nodeKind === 'normal' ? undefined : `${graph.nodeKind} commit`}>
                 <GraphCell row={graph} width={graphWidth} selected={selectedOid === commit.oid} />
                 {graph.nodeKind !== 'normal' && (

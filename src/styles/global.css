@@ -757,3 +757,58 @@ button.control.worktree-viewing:hover { background: transparent; }
 .operation-log time { margin-left: 8px; color: var(--text-muted); font-size: 11px; }
 .operation-log p { margin-top: 4px; color: var(--text-secondary); }
 .release-fetch-status { margin-inline: 16px; margin-bottom: 6px; color: var(--text-secondary); font-size: 11px; }
+
+/* HTML context menu (browser preview and fallback), modelled on the macOS menu. */
+.context-menu {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 210px;
+  max-width: 360px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+  box-shadow: 0 10px 28px var(--menu-shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  font-size: 13px;
+}
+.context-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 4px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: default;
+}
+.context-menu button > span { overflow: hidden; text-overflow: ellipsis; }
+.context-menu button kbd { color: var(--text-muted); font-family: var(--font-ui); font-size: 12px; }
+.context-menu button:enabled:hover, .context-menu button:focus-visible { outline: none; background: var(--accent); color: #fff; }
+.context-menu button:enabled:hover kbd, .context-menu button:focus-visible kbd { color: #ffffffcc; }
+.context-menu button:disabled { color: var(--text-muted); }
+.context-menu-separator { height: 1px; margin: 4px 8px; background: var(--border-subtle); }
+
+.app-toast-region { position: fixed; z-index: 60; right: 0; bottom: 36px; left: 0; display: flex; justify-content: center; pointer-events: none; }
+.app-toast {
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--text-primary);
+  color: var(--bg-main);
+  font-size: 12px;
+  box-shadow: 0 6px 18px var(--menu-shadow);
+}
+.app-toast-error { background: var(--danger); color: #fff; }
+
+.confirm-dialog form { display: grid; gap: 10px; padding: 16px 16px 14px; }
+.confirm-dialog h2 { margin: 0; }
+.confirm-dialog p { margin: 0; color: var(--text-secondary); }
+.confirm-actions { display: flex; justify-content: end; gap: 8px; margin-top: 4px; }
+.control-danger { border-color: transparent; background: var(--danger); color: #fff; }
+button.control.control-danger:enabled:hover { background: color-mix(in srgb, var(--danger) 88%, #000); }

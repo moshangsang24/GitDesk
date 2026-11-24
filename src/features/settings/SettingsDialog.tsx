@@ -61,6 +61,8 @@ export function SettingsDialog({ open, onClose, showHash, setShowHash, appearanc
             <div><dt>Find repository</dt><dd><kbd>⌘ K</kbd></dd></div>
             <div><dt>Search current view</dt><dd><kbd>⌘ F</kbd></dd></div>
             <div><dt>Refresh repository</dt><dd><kbd>⌘ R</kbd></dd></div>
+            <div><dt>Copy selected commit hash</dt><dd><kbd>⌘ C</kbd></dd></div>
+            <div><dt>Open context menu</dt><dd><kbd>⇧ F10</kbd></dd></div>
           </dl>
         </div>
       </div>

@@ -1,11 +1,15 @@
 import { GitBranch, GitCommitVertical, LockKeyhole } from 'lucide-react';
+import { showContextMenu } from '../../services/context-menu';
 import type { Repository } from '../../services/contracts';
 import { useGitDesk } from '../../stores/gitdesk';
+import { copy, openLocationFor } from '../menus/actions';
+import { worktreeMenu } from '../menus/menus';
 import { RepoStatus } from '../workspace/RepoStatus';
 
 export function WorktreesView({ repo }: { repo: Repository }) {
   const selected = useGitDesk((state) => state.worktreeId);
   const openWorktree = useGitDesk((state) => state.openWorktree);
+  const local = useGitDesk((state) => state.local);
 
   return (
     <div className="worktrees-view">
@@ -23,7 +27,22 @@ export function WorktreesView({ repo }: { repo: Repository }) {
           {repo.worktrees.map((tree) => {
             const active = selected === tree.id;
             return (
-              <tr key={tree.id} data-viewing={active || undefined}>
+              <tr
+                key={tree.id}
+                data-viewing={active || undefined}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  void showContextMenu(worktreeMenu(
+                    { active, path: tree.path, local, prunable: !!tree.prunable },
+                    {
+                      copy,
+                      browse: () => { void openWorktree(tree.id); },
+                      reveal: () => { void openLocationFor(repo.id, tree.id, 'finder'); },
+                      terminal: () => { void openLocationFor(repo.id, tree.id, 'terminal'); },
+                    },
+                  ), { x: event.clientX, y: event.clientY });
+                }}
+              >
                 <td>
                   <span className="worktree-branch">
                     {tree.branch ? <GitBranch size={14} /> : <GitCommitVertical size={14} />}

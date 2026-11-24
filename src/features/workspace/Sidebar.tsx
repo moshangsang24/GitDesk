@@ -5,7 +5,10 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { SearchField } from '../../components/ui/SearchField';
+import { showContextMenu } from '../../services/context-menu';
 import { useGitDesk } from '../../stores/gitdesk';
+import { confirmRemoveRepository, copy, openLocationFor } from '../menus/actions';
+import { repositoryMenu } from '../menus/menus';
 import { RepoStatus } from './RepoStatus';
 
 interface Props {
@@ -156,6 +159,21 @@ export function Sidebar({ inputRef, searchOpen, onSearch, onCloseSearch, onColla
                         onClick={(event) => {
                           event.currentTarget.focus({ preventScroll: true });
                           void openRepository(repository.id);
+                        }}
+                        onContextMenu={(event) => {
+                          event.preventDefault();
+                          // Opening a repository reloads it, so the menu acts on this row without switching.
+                          void showContextMenu(repositoryMenu(
+                            { active, path: tree.path, local, available: !tree.prunable },
+                            {
+                              copy,
+                              open: () => { void openRepository(repository.id); },
+                              refresh: () => { void refresh(); },
+                              reveal: () => { void openLocationFor(repository.id, tree.id, 'finder'); },
+                              terminal: () => { void openLocationFor(repository.id, tree.id, 'terminal'); },
+                              remove: () => { void confirmRemoveRepository(workspace, repository); },
+                            },
+                          ), { x: event.clientX, y: event.clientY });
                         }}
                       >
                         <GitBranch size={18} strokeWidth={1.6} className="repository-icon" aria-hidden="true" />

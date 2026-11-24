@@ -135,15 +135,17 @@ History 的列顺序为 Branch / Tag、Graph、Commit Message、Author、Date、
 
 | 位置 | 菜单项 |
 | --- | --- |
-| 仓库行 | Refresh（⌘R）· Reveal in Finder · Open in Terminal · Copy Path · Remove from Workspace…（只移除应用记录，先确认） |
-| 提交行 | Show Details（↩）· Copy Hash（⌘C）· Copy Short Hash · Copy Subject · Focus History on `<branch>` |
+| 仓库行 | 当前仓库为 Refresh（⌘R），其他仓库为 Open Repository · Reveal in Finder · Open in Terminal · Copy Path · Remove from Workspace…（只移除应用记录，先确认） |
+| 提交行 | Copy Hash（⌘C）· Copy Short Hash · Copy Subject · 每个指向该提交的本地分支一项 Focus History on `<branch>`（最多 3 项） |
 | 分支 / 标签 | Locate Commit · Focus History on This Branch（tag 无此项）· Copy Name |
-| 文件行 | Show Diff · Copy Path · Copy Full Path |
-| Worktree 行 | Browse This Worktree · Reveal in Finder · Open in Terminal · Copy Path |
+| 文件行 | Show Diff · Copy Path · Copy Full Path（当前 worktree 路径 + 相对路径） |
+| Worktree 行 | Browse This Worktree（正在查看时隐藏）· Reveal in Finder · Open in Terminal · Copy Path |
 
-- 右键先选中该行，再弹出菜单，菜单始终作用于当前选中对象。仓库和 worktree 的 Finder / Terminal 操作作用于右键后选中的 worktree。
+- 提交行和文件行右键时先选中该行（提交随即打开详情），菜单作用于选中对象。仓库行和 worktree 行右键不切换浏览对象（切换会重新加载），菜单直接作用于该行：Finder / Terminal 打开该行对应的 worktree（仓库行取当前查看或主 worktree）。
+- 复制类操作完成后在窗口底部短暂提示 Copied …；失败时提示改用选中文字后 ⌘C。
 - 菜单只放只读动作。Git 写操作在 M5 确认流程完成后另行加入，且必须经过确认对话框；reset、revert、cherry-pick 等 P1/P2 或被禁止的操作不出现在菜单中，也不放置灰占位。
-- 不适用的项隐藏；暂时不可用的项置灰，并在文字中写明原因。只显示真实可用的快捷键。
+- 不适用的项隐藏；暂时不可用的项置灰，并在文字中写明原因（如浏览器预览中的 `(Desktop App Only)`、worktree 丢失时的 `(Worktree Missing)`）。只显示真实可用的快捷键。
+- Tauri 能力只增加 `core:menu:allow-new`、`core:menu:allow-popup` 和用于释放菜单资源的 `core:resources:allow-close`。
 - 焦点所在行可用 ⇧F10 打开同一份菜单。选中提交且没有文字选区时，⌘C 复制完整 hash。
 - 屏蔽 WebView 默认右键菜单；输入框、Diff 和提交说明等可选中文字区域保留系统的复制菜单。
 - 单个文件的 Reveal in Finder 需要新增只读 IPC（沿用 registry 和 file id 校验），待后端排期后加入。

@@ -2,8 +2,11 @@ import { Cloud, Crosshair, FolderGit2, GitBranch, Tag } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { SearchField } from '../../components/ui/SearchField';
 import { shortRef } from '../../core/graph/refs';
+import { showContextMenu } from '../../services/context-menu';
 import type { GitRef, Worktree } from '../../services/contracts';
 import { useGitDesk } from '../../stores/gitdesk';
+import { copy, openLocationFor } from '../menus/actions';
+import { refMenu, worktreeMenu } from '../menus/menus';
 
 const pageSize = 60;
 
@@ -21,7 +24,20 @@ function RefRows({ refs, remote }: { refs: GitRef[]; remote?: string }) {
         const Icon = ref.kind === 'local' ? GitBranch : ref.kind === 'remote' ? Cloud : Tag;
         return (
           <li key={ref.fullName} data-focused={focusedRef === ref.fullName || undefined}>
-            <button className="history-ref-name" title={ref.fullName} aria-label={`Locate ${name}`} disabled={!locatingReady} onClick={() => { void locate(ref.targetOid); }}>
+            <button
+              className="history-ref-name"
+              title={ref.fullName}
+              aria-label={`Locate ${name}`}
+              disabled={!locatingReady}
+              onClick={() => { void locate(ref.targetOid); }}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                void showContextMenu(refMenu(
+                  { kind: ref.kind, fullName: ref.fullName, name, targetOid: ref.targetOid },
+                  { copy, locate: (oid) => { void locate(oid); }, focusBranch: (fullName) => { void setScope('ref', fullName); } },
+                ), { x: event.clientX, y: event.clientY });
+              }}
+            >
               <Icon size={13} aria-hidden="true" />
               <span className="truncate">{remote ? name.slice(remote.length + 1) : name}</span>
             </button>
@@ -45,6 +61,8 @@ export function HistoryRefs({ refs, worktrees, worktreeId }: { refs: GitRef[]; w
   const search = useRef<HTMLInputElement>(null);
   const visibility = useGitDesk((state) => state.refVisibility);
   const openWorktree = useGitDesk((state) => state.openWorktree);
+  const repoId = useGitDesk((state) => state.repoId);
+  const local = useGitDesk((state) => state.local);
   const filter = query.trim().toLowerCase();
   const visible = refs.filter((ref) => !ref.symbolicTarget && (
     ref.fullName.toLowerCase().includes(filter) || ref.targetOid.startsWith(filter)
@@ -93,7 +111,24 @@ export function HistoryRefs({ refs, worktrees, worktreeId }: { refs: GitRef[]; w
           <ul className="history-ref-list">
             {trees.map((tree) => (
               <li key={tree.id} data-focused={tree.id === worktreeId || undefined}>
-                <button className="history-ref-name" title={tree.path} aria-current={tree.id === worktreeId || undefined} onClick={() => { void openWorktree(tree.id); }}>
+                <button
+                  className="history-ref-name"
+                  title={tree.path}
+                  aria-current={tree.id === worktreeId || undefined}
+                  onClick={() => { void openWorktree(tree.id); }}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    void showContextMenu(worktreeMenu(
+                      { active: tree.id === worktreeId, path: tree.path, local, prunable: !!tree.prunable },
+                      {
+                        copy,
+                        browse: () => { void openWorktree(tree.id); },
+                        reveal: () => { void openLocationFor(repoId, tree.id, 'finder'); },
+                        terminal: () => { void openLocationFor(repoId, tree.id, 'terminal'); },
+                      },
+                    ), { x: event.clientX, y: event.clientY });
+                  }}
+                >
                   <FolderGit2 size={13} aria-hidden="true" />
                   <span className="truncate">{tree.status.branchNameUnavailable ? 'Branch name unavailable' : tree.branch ?? (tree.head ? `Detached ${tree.head.slice(0, 7)}` : 'No commits')}</span>
                 </button>
