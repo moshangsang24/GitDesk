@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { useDisplayPreferences } from './preferences';
 import type { Appearance } from './useAppearance';
 
 interface Props {
@@ -14,6 +15,8 @@ interface Props {
 
 export function SettingsDialog({ open, onClose, showHash, setShowHash, appearance, setAppearance, local }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const absoluteDates = useDisplayPreferences((state) => state.absoluteDates);
+  const setAbsoluteDates = useDisplayPreferences((state) => state.setAbsoluteDates);
 
   useEffect(() => {
     const element = dialog.current;
@@ -32,10 +35,18 @@ export function SettingsDialog({ open, onClose, showHash, setShowHash, appearanc
       <div className="settings-content">
         <label className="settings-row">
           <span>Appearance</span>
-          <select className="control" value={appearance} onChange={(event) => setAppearance(event.target.value === 'dark' ? 'dark' : 'light')}>
+          <select className="control" value={appearance} onChange={(event) => {
+            const value = event.target.value;
+            setAppearance(value === 'dark' || value === 'light' ? value : 'system');
+          }}>
+            <option value="system">System</option>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
           </select>
+        </label>
+        <label className="settings-row">
+          <span>Always show commit dates</span>
+          <input type="checkbox" checked={absoluteDates} onChange={(event) => setAbsoluteDates(event.target.checked)} />
         </label>
         {!local && <label className="settings-row">
           <span>Show commit hashes</span>

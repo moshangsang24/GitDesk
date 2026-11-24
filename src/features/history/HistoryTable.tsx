@@ -1,9 +1,10 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Cloud, GitBranch, Tag } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, RefObject } from 'react';
 import { ResizeHandle } from '../../components/ui/ResizeHandle';
-import { graphGeometry } from '../../core/graph/types';
+import { graphGeometry, graphPalette } from '../../core/graph/types';
+import { useDisplayPreferences } from '../settings/preferences';
+import { authorColor, authorInitials, formatCommitAge, formatFullDate, formatShortDate } from './commit-display';
 import type { Commit, RefLabel, RepositoryView } from '../../services/contracts';
 import { stageNames } from '../../services/release';
 import { useGitDesk } from '../../stores/gitdesk';
@@ -13,38 +14,41 @@ import { evidenceLabels, formatObservation } from '../releases/stage';
 import { Highlight } from './history-search';
 
 const headerHeight = 26;
-const shortDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-const fullDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' });
-
 export function formatCommitDate(timestamp: number, detailed = false) {
-  return (detailed ? fullDate : shortDate).format(timestamp * 1000);
+  return detailed ? formatFullDate(timestamp) : formatShortDate(timestamp);
 }
 
 const refKinds: Record<RefLabel['kind'], string> = {
   head: 'HEAD', local: 'Local branch', remote: 'Remote-tracking branch', tag: 'Tag',
 };
 
-function RefBadge({ label }: { label: RefLabel }) {
-  const Icon = label.kind === 'head' ? null : { tag: Tag, local: GitBranch, remote: Cloud }[label.kind];
+function RefBadge({ label, color }: { label: RefLabel; color: string }) {
+  if (label.kind === 'head') {
+    return <span className="ref-badge ref-head" title="HEAD" role="img" aria-label="HEAD" />;
+  }
   return (
-    <span className={`ref-badge ref-${label.kind}${label.tone ? ` ref-${label.tone}` : ''}`} title={`${refKinds[label.kind]}: ${label.name}`}>
-      {Icon && <Icon size={10} aria-hidden="true" />}
+    <span className={`ref-badge ref-${label.kind}`} style={{ '--ref-color': color } as CSSProperties} title={`${refKinds[label.kind]}: ${label.name}`}>
+      <span className="ref-mark" aria-hidden="true" />
       <span className="truncate">{label.name}</span>
     </span>
   );
 }
 
-function RefBadges({ refs, limit }: { refs: RefLabel[]; limit: number }) {
-  const visible = refs.slice(0, limit);
-  const overflow = refs.slice(limit);
+function RefBadges({ refs, limit, color }: { refs: RefLabel[]; limit: number; color: string }) {
+  // The HEAD marker is a compact ring, so it does not use up one of the visible label slots.
+  const head = refs.filter(({ kind }) => kind === 'head');
+  const named = refs.filter(({ kind }) => kind !== 'head');
+  const visible = named.slice(0, limit);
+  const overflow = named.slice(limit);
   return (
     <div className="ref-labels">
-      {visible.map((label) => <RefBadge key={`${label.kind}-${label.name}`} label={label} />)}
+      {head.map((label) => <RefBadge key="head" label={label} color={color} />)}
+      {visible.map((label) => <RefBadge key={`${label.kind}-${label.name}`} label={label} color={color} />)}
       {overflow.length > 0 && (
         <details className="ref-overflow" onClick={(event) => event.stopPropagation()}>
-          <summary className="ref-badge" aria-label={`Show ${overflow.length} more references`}>+{overflow.length}</summary>
+          <summary className="ref-badge ref-more" aria-label={`Show ${overflow.length} more references`}>+{overflow.length}</summary>
           <span className="ref-overflow-list">
-            {overflow.map((label) => <RefBadge key={`${label.kind}-${label.name}`} label={label} />)}
+            {overflow.map((label) => <RefBadge key={`${label.kind}-${label.name}`} label={label} color={color} />)}
           </span>
         </details>
       )}
@@ -79,11 +83,12 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
   const visibility = useGitDesk((state) => state.refVisibility);
   const repoId = useGitDesk((state) => state.repoId);
   const loadMore = useGitDesk((state) => state.loadMoreHistory);
+  const absoluteDates = useDisplayPreferences((state) => state.absoluteDates);
   const { commits, graphRows } = data;
   const [widths, setWidths] = useState<Partial<Record<keyof typeof columnLimits, number>>>({});
   const columns = {
-    Author: widths.Author ?? Math.round(Math.max(84, Math.min(116, viewportWidth * 0.09))),
-    Date: widths.Date ?? (viewportWidth <= 780 ? 62 : 68),
+    Author: widths.Author ?? Math.round(Math.max(104, Math.min(140, viewportWidth * 0.1))),
+    Date: widths.Date ?? (viewportWidth <= 780 ? 74 : 80),
     Hash: showHash ? widths.Hash ?? (viewportWidth <= 780 ? 66 : 73) : 0,
   };
 
@@ -208,9 +213,9 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
               onClick={() => { gridRef.current?.focus({ preventScroll: true }); choose(commit); }}
             >
               {tracking && <span className="history-track-cell" role="gridcell"><input type="checkbox" checked={tracking.ids.includes(commit.oid)} aria-label={`Track ${commit.subject}`} onClick={(event) => event.stopPropagation()} onChange={() => tracking.onToggle(commit.oid)} /></span>}
-              <div role="gridcell" className="history-ref-cell"><RefBadges refs={refs} limit={compactRefs ? 1 : 2} /></div>
+              <div role="gridcell" className="history-ref-cell"><RefBadges refs={refs} limit={compactRefs ? 1 : 2} color={graphPalette[graph.colorId % graphPalette.length]} /></div>
               <span role="gridcell" className="graph-column" title={graph.nodeKind === 'boundary' ? 'Shallow history boundary' : graph.nodeKind === 'normal' ? undefined : `${graph.nodeKind} commit`}>
-                <GraphCell row={graph} width={graphWidth} />
+                <GraphCell row={graph} width={graphWidth} selected={selectedOid === commit.oid} />
                 {graph.nodeKind !== 'normal' && (
                   <span className="sr-only">{graph.nodeKind === 'merge' ? `Merge, ${commit.parents.length} parents` : graph.nodeKind === 'boundary' ? 'Shallow history boundary' : 'Root commit'}</span>
                 )}
@@ -218,10 +223,13 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
               <span role="gridcell" className="commit-message" title={commit.subject}>
                 <span className="commit-subject truncate"><Highlight value={commit.subject} query={query} /></span>
               </span>
-              <span role="gridcell" className="history-meta truncate" title={commit.authorName}>
-                <Highlight value={commit.authorName} query={query} />
+              <span role="gridcell" className="history-meta history-author" title={commit.authorName}>
+                <span className="author-avatar" style={{ '--avatar-color': authorColor(commit.authorName) } as CSSProperties} aria-hidden="true">{authorInitials(commit.authorName)}</span>
+                <span className="truncate"><Highlight value={commit.authorName} query={query} /></span>
               </span>
-              <span role="gridcell" className="history-meta truncate" title={date}>{formatCommitDate(commit.authorTime)}</span>
+              <span role="gridcell" className="history-meta history-date truncate" title={date}>
+                {absoluteDates ? formatShortDate(commit.authorTime) : formatCommitAge(commit.authorTime)}
+              </span>
               {showHash && (
                 <span role="gridcell" className="history-hash truncate" title={commit.oid}>
                   <Highlight value={commit.oid.slice(0, 7)} query={query} />

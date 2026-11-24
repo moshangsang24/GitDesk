@@ -66,22 +66,22 @@
 | --bg-elevated | #EDF1F6 | #262A31 | 表头、菜单、浮层 |
 | --bg-control | #E7ECF3 | #2E333D | 控件、二级按钮 |
 | --bg-hover | #EEF2F8 | #262A32 | 行 hover |
-| --bg-selected | #DCE7FB | #2B3E5E | 焦点所在面板的选中项 |
+| --bg-selected | #DCE7FB | #26375A | 焦点所在面板的选中项 |
 | --bg-selected-inactive | #E6E9EF | #2A2E36 | 失焦面板的选中项 |
 | --selection-indicator | #8A99AD | #596675 | 失焦选中项的左侧线 |
 | --border | #C3CDD9 | #363B45 | 控件边框 |
 | --border-subtle | #E1E6ED | #2B2F37 | 面板分隔线 |
 | --text-primary | #182434 | #E3E8F0 | 正文、commit message |
 | --text-secondary | #43536A | #A3AEBE | 次要信息 |
-| --text-muted | #56667B | #8792A3 | 路径、元数据（注意对比度） |
-| --accent | #2E62D9 | #6E9BFF | 焦点选中、焦点环、激活 tab、菜单高亮 |
+| --text-muted | #56667B | #97A2B4 | 路径、元数据（注意对比度） |
+| --accent | #2858C8 | #7FA8FF | 焦点选中、焦点环、激活 tab、菜单高亮 |
 | --success | #216848 | #7DC7A4 | clean/sync/新增 |
 | --warning | #88520E | #E5AA65 | modified/需要注意 |
-| --danger | #A13B4E | #E58D95 | conflict/错误/删除差异 |
+| --danger | #A13B4E | #EB98A0 | conflict/错误/删除差异 |
 | --diff-add-bg | #EAF6EE | #1C3327 | 新增行背景 |
 | --diff-del-bg | #FAECEF | #3A2229 | 删除行背景 |
 
-提交图在两套主题中使用相同的 8 色轨道色序（purple、amber、cyan、blue、green、pink、yellow、indigo）。浅色主题取更深、更饱和的一组（如 #8B3FD9、#C2650A、#0A8FA0、#2F6FE0），2px 线条在白底上对比度不低于 3:1；深色主题取更亮的一组。提交图是画面的视觉主角，强调色只用于焦点与选中，其余界面保持中性。状态同时使用图标、文字和形状。
+提交图在两套主题中使用相同的 8 色轨道色序（purple、amber、cyan、blue、green、pink、yellow、indigo）。浅色主题取更深、更饱和的一组（如 #8B3FD9、#C2650A、#0A8FA0、#2F6FE0），2px 线条在白底上对比度不低于 3:1；深色主题取更亮的一组。文字与底色组合保持 WCAG AA（4.5:1）以上。提交图是画面的视觉主角，强调色只用于焦点与选中，其余界面保持中性。状态同时使用图标、文字和形状。
 
 字体：`-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`；代码用 `ui-monospace, SFMono-Regular, Menlo, monospace`。默认 13px，重要标题 14px/600，次要 11–12px，组标签 10–11px/600，diff 12px/1.55。常规使用 400/500/600，避免到处粗体。常规间距 4/8/12/16 px；控件圆角 5–6 px，面板分隔线 1px，不使用大圆角卡片。图标 Lucide 14–16px，stroke 1.5–1.8，文本标签优先于猜图标。
 
