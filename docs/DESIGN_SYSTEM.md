@@ -52,30 +52,36 @@
 
 ## 2. Design tokens
 
-两套主题共享 `src/styles/tokens.css` 的语义 token。默认使用浅色，在 Settings 的 Appearance 中可切换为深色。应用在本地保存选择。
+两套主题共享 `src/styles/tokens.css` 的语义 token。Settings 的 Appearance 提供 System / Light / Dark，默认 System，跟随 macOS 外观并在系统切换时实时更新。应用在本地保存选择。
+
+界面用底色而不是线条建立层次：窗口外框（标题栏、状态栏）→ 侧栏 → 主内容由深到浅；提交详情头部、文件列表和引用区使用介于两者之间的面板色。分隔线只作辅助。暂不使用透明窗口或侧栏毛玻璃（需要 macOS 私有 API，影响上架），以实色分层实现。
 
 | Token | 浅色 | 深色 | 用途 |
 | --- | --- | --- | --- |
-| --bg-main | #FFFFFF | #191C22 | 主内容、graph、diff 背景 |
-| --bg-sidebar | #F6F8FB | #1D2027 | 工作区侧栏 |
-| --bg-elevated | #EDF1F6 | #252831 | 标题栏、表头、菜单 |
+| --bg-chrome | #E6EAF0 | #15171C | 标题栏、状态栏 |
+| --bg-sidebar | #ECEFF4 | #17191E | 工作区侧栏 |
+| --bg-main | #FFFFFF | #1D2026 | 主内容、graph、diff 背景 |
+| --bg-row-alt | #F8F9FB | #1A1D23 | 提交表隔行底色 |
+| --bg-panel | #F7F9FB | #22252C | 详情头部、文件列表、引用区 |
+| --bg-elevated | #EDF1F6 | #262A31 | 表头、菜单、浮层 |
 | --bg-control | #E7ECF3 | #2E333D | 控件、二级按钮 |
-| --bg-hover | #EDF2F9 | #262C36 | 行 hover |
-| --bg-selected | #DCEAFE | #304159 | 焦点所在面板的选中项 |
-| --bg-selected-inactive | #E8EDF4 | #2A303A | 失焦面板的选中项 |
-| --selection-indicator | #788BA3 | #596675 | 失焦选中项的左侧线 |
-| --border | #BDC9D8 | #373C46 | 细分隔线 |
-| --text-primary | #182434 | #D9DFE9 | 正文、commit message |
-| --text-secondary | #43536A | #9AA6B7 | 次要信息 |
-| --text-muted | #56667B | #8A96A8 | 路径、元数据（注意对比度） |
-| --accent | #285BA6 | #82A9EB | 激活、焦点、主要入口 |
+| --bg-hover | #EEF2F8 | #262A32 | 行 hover |
+| --bg-selected | #DCE7FB | #2B3E5E | 焦点所在面板的选中项 |
+| --bg-selected-inactive | #E6E9EF | #2A2E36 | 失焦面板的选中项 |
+| --selection-indicator | #8A99AD | #596675 | 失焦选中项的左侧线 |
+| --border | #C3CDD9 | #363B45 | 控件边框 |
+| --border-subtle | #E1E6ED | #2B2F37 | 面板分隔线 |
+| --text-primary | #182434 | #E3E8F0 | 正文、commit message |
+| --text-secondary | #43536A | #A3AEBE | 次要信息 |
+| --text-muted | #56667B | #8792A3 | 路径、元数据（注意对比度） |
+| --accent | #2E62D9 | #6E9BFF | 焦点选中、焦点环、激活 tab、菜单高亮 |
 | --success | #216848 | #7DC7A4 | clean/sync/新增 |
 | --warning | #88520E | #E5AA65 | modified/需要注意 |
 | --danger | #A13B4E | #E58D95 | conflict/错误/删除差异 |
-| --diff-add-bg | #EAF6EE | #1E3229 | 新增行背景 |
-| --diff-del-bg | #FAECEF | #38232A | 删除行背景 |
+| --diff-add-bg | #EAF6EE | #1C3327 | 新增行背景 |
+| --diff-del-bg | #FAECEF | #3A2229 | 删除行背景 |
 
-提交图在两套主题中使用相同的轨道色序。浅色主题的对应轨道颜色更深，保证线条和节点在白底上的辨识度。状态同时使用图标、文字和形状。
+提交图在两套主题中使用相同的 8 色轨道色序（purple、amber、cyan、blue、green、pink、yellow、indigo）。浅色主题取更深、更饱和的一组（如 #8B3FD9、#C2650A、#0A8FA0、#2F6FE0），2px 线条在白底上对比度不低于 3:1；深色主题取更亮的一组。提交图是画面的视觉主角，强调色只用于焦点与选中，其余界面保持中性。状态同时使用图标、文字和形状。
 
 字体：`-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`；代码用 `ui-monospace, SFMono-Regular, Menlo, monospace`。默认 13px，重要标题 14px/600，次要 11–12px，组标签 10–11px/600，diff 12px/1.55。常规使用 400/500/600，避免到处粗体。常规间距 4/8/12/16 px；控件圆角 5–6 px，面板分隔线 1px，不使用大圆角卡片。图标 Lucide 14–16px，stroke 1.5–1.8，文本标签优先于猜图标。
 
@@ -95,12 +101,12 @@ History 默认承担视觉焦点。焦点进入仓库列表、提交列表、文
 
 ### Commit history
 
-History 的列顺序为 Branch / Tag、Graph、Commit Message、Author、Date、可选 Hash。分支与标签列靠近图形列，让引用和它所指向的提交对齐。Graph 按 [GRAPH_ALGORITHM.md](GRAPH_ALGORITHM.md) 绘制，最小约 48 px，按实际轨道数加宽。普通提交用实心点，合并提交用圆环和内点，根提交用方形，浅克隆边界用三角形。宽屏的留白放在元数据之后，列宽仍可调整。时间默认用短日期，tooltip 展示详细日期。点击行打开提交详情，选择文件后显示 Diff。搜索保留完整拓扑，支持匹配高亮和上下定位。
+History 的列顺序为 Branch / Tag、Graph、Commit Message、Author、Date、可选 Hash。分支与标签列靠近图形列，让引用和它所指向的提交对齐。Graph 按 [GRAPH_ALGORITHM.md](GRAPH_ALGORITHM.md) 绘制，最小约 48 px，按实际轨道数加宽。普通提交用实心点，合并提交用圆环和内点，根提交用方形，浅克隆边界用三角形。线宽 2px；节点半径约 4.3px，外加 2px 行底色描边，让节点从线上分离；选中提交的节点外加一圈强调色光晕。宽屏的留白放在元数据之后，列宽仍可调整。作者名前显示 16px 首字母头像，颜色由作者名哈希到轨道色，仅本地生成，不请求任何头像服务。7 天内的提交显示相对时间（如 `2h ago`、`Yesterday`），更早的显示短日期，tooltip 展示带时区的详细时间；Settings 可改为始终显示日期。日期、hash 和计数使用等宽数字。点击行打开提交详情，选择文件后显示 Diff。搜索保留完整拓扑，支持匹配高亮和上下定位。
 
 #### 引用区与图上的标签
 
 - History 提供可折叠的引用区。仓库区域窄于 950 px 时默认收起引用区，工具栏按钮可手动展开。工作区侧栏用于切换仓库。引用区分 **Local、Remote、Tags、Worktrees**，分组标题显示数量。Remote 按 `origin`、`upstream` 等远程名再分组，支持搜索完整名称。Worktrees 条目用于切换查看对象。
-- 图上的标签按 HEAD → 本地分支 → 远程跟踪分支 → tag 排列。标签用文字或图标区分类型。Branch / Tag 列常规为 162 px，提交表窄于 850 px 时收为 112 px，溢出显示可展开的 `+N`。`main` 和 `origin/main` 指向同一提交时同一行显示，指向不同提交时各自标在目标行上。领先、落后数量在已有上游和计数时显示。
+- 图上的标签按 HEAD → 本地分支 → 远程跟踪分支 → tag 排列。标签颜色取所在提交节点的轨道色：淡色底 + 主文字色 + 类型标记，本地分支为实心圆点，远程跟踪分支为空心圆环，tag 为菱形，HEAD 为强调色空心圆（tooltip 与无障碍标签写明类型）。Branch / Tag 列常规为 162 px，提交表窄于 850 px 时收为 112 px，溢出显示可展开的 `+N`。`main` 和 `origin/main` 指向同一提交时同一行显示，指向不同提交时各自标在目标行上。领先、落后数量在已有上游和计数时显示。
 - 单击分支或标签定位到它指向的提交，沿用当前历史范围。目标在范围内但尚未加载时，显示定位进度并按页查找。当前范围中找不到目标时，提供切换到 **All refs** 的入口。分支另有 **Focus branch** 操作，由用户显式触发。
 
 #### 引用显示与历史范围
@@ -123,6 +129,25 @@ History 的列顺序为 Branch / Tag、Graph、Commit Message、Author、Date、
 
 详情顶部单行显示 subject、hash、作者、日期和变更文件数。subject 可展开完整 message。Merge 增加 parent 选择器，窄窗口优先保留标题、hash 和比较基准。文件列表保留 A/M/D/R/U 和 numstat，文件列表标题与当前文件名在同一高度。Diff 的 hunk 标题用中性色，行号槽用细线和代码分隔，新增与删除用低饱和度行底色、2px 色条和 `+` / `−` 同时标明。无差异、binary、too large、truncated 均有明确说明。仓库提供的 Diff 以转义文本显示。Changes 按 Staged / Unstaged / Untracked / Conflicts 分组，选择文件即可查看对应 Diff。
 
+### 右键菜单
+
+仓库行、提交行、分支与标签（图上标签和引用区）、文件行（提交详情与 Changes）、worktree 行提供右键菜单。桌面应用使用 macOS 原生菜单，浏览器 Mock 使用外观一致的 HTML 菜单；原生菜单不可用时退回 HTML 菜单。
+
+| 位置 | 菜单项 |
+| --- | --- |
+| 仓库行 | Refresh（⌘R）· Reveal in Finder · Open in Terminal · Copy Path · Remove from Workspace…（只移除应用记录，先确认） |
+| 提交行 | Show Details（↩）· Copy Hash（⌘C）· Copy Short Hash · Copy Subject · Focus History on `<branch>` |
+| 分支 / 标签 | Locate Commit · Focus History on This Branch（tag 无此项）· Copy Name |
+| 文件行 | Show Diff · Copy Path · Copy Full Path |
+| Worktree 行 | Browse This Worktree · Reveal in Finder · Open in Terminal · Copy Path |
+
+- 右键先选中该行，再弹出菜单，菜单始终作用于当前选中对象。仓库和 worktree 的 Finder / Terminal 操作作用于右键后选中的 worktree。
+- 菜单只放只读动作。Git 写操作在 M5 确认流程完成后另行加入，且必须经过确认对话框；reset、revert、cherry-pick 等 P1/P2 或被禁止的操作不出现在菜单中，也不放置灰占位。
+- 不适用的项隐藏；暂时不可用的项置灰，并在文字中写明原因。只显示真实可用的快捷键。
+- 焦点所在行可用 ⇧F10 打开同一份菜单。选中提交且没有文字选区时，⌘C 复制完整 hash。
+- 屏蔽 WebView 默认右键菜单；输入框、Diff 和提交说明等可选中文字区域保留系统的复制菜单。
+- 单个文件的 Reveal in Finder 需要新增只读 IPC（沿用 registry 和 file id 校验），待后端排期后加入。
+
 ### Worktrees
 
 使用列表或表格，不做大卡片。每行 branch/HEAD、绝对或缩短路径、dirty/sync 状态、locked/prunable、当前查看标记。关联目录在 workspace 外显示 external 标签。点击 Select 仅切换浏览上下文，Finder/Terminal 是显式操作。不得误用 checkout 来实现 UI 切换。
@@ -144,6 +169,8 @@ History 的列顺序为 Branch / Tag、Graph、Commit Message、Author、Date、
 | ↑ / ↓ | 当前聚焦列表的上一/下一行 |
 | Enter | 查看选择的提交或仓库 |
 | Esc | 关闭菜单、搜索或详情（按层级） |
+| ⌘C | 提交列表聚焦且无文字选区时，复制选中提交的完整 hash |
+| ⇧F10 | 打开焦点所在行的右键菜单 |
 | ⌘, | Settings |
 
 支持 macOS 标准复制/选中文字、可访问焦点、可见 focus ring、菜单键盘导航、禁用控件提示。列表焦点与文本编辑不冲突；快捷键不可在输入框中误触 Git 操作。鼠标 hover 不刷新数据，不因状态更新抢夺键盘焦点。分隔线 drag 命中区域建议 6–8px，视觉仍是 1px。
