@@ -1,0 +1,263 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 820" width="1280" height="820" role="img" aria-label="GitDesk dark workspace mockup, illustrative local Git history">
+<title>GitDesk — macOS design reference</title>
+<desc>Mock UI for a local multi-repository Git client, with a graph, commit details and unified diff.</desc>
+<defs><clipPath id="frame"><rect width="1280" height="820" rx="11"/></clipPath></defs><g clip-path="url(#frame)">
+<rect x="0" y="0" width="1280" height="820" rx="0" fill="#191C22"/>
+<rect x="0" y="0" width="1280" height="36" rx="0" fill="#252831"/>
+<rect x="0" y="36" width="252" height="760" rx="0" fill="#1D2027"/>
+<path d="M0 36L1280 36" fill="none" stroke="#373C46" stroke-width="1"/>
+<path d="M252 36L252 796" fill="none" stroke="#373C46" stroke-width="1"/>
+<rect x="0" y="796" width="1280" height="24" rx="0" fill="#252831"/>
+<path d="M0 796L1280 796" fill="none" stroke="#373C46" stroke-width="1"/>
+<g font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif">
+<circle cx="18" cy="18" r="6" fill="#ED6A60"/>
+<circle cx="38" cy="18" r="6" fill="#F5BF4F"/>
+<circle cx="58" cy="18" r="6" fill="#61C454"/>
+<text x="640" y="23" font-size="14" fill="#D9DFE9" font-weight="600" text-anchor="middle">GitDesk</text>
+<text x="1262" y="23" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="end">Cmd K</text>
+<text x="16" y="62" font-size="11" fill="#9AA6B7" font-weight="600" text-anchor="start">WORKSPACES</text>
+<text x="232" y="63" font-size="18" fill="#9AA6B7" font-weight="500" text-anchor="end">+</text>
+<rect x="12" y="73" width="228" height="30" rx="5" fill="#292E37"/>
+<text x="38" y="93" font-size="13" fill="#D9DFE9" font-weight="600" text-anchor="start">Work</text>
+<path d="M23 85l4 4 4 -4" fill="none" stroke="#9AA6B7" stroke-width="1.5" stroke-linecap="round"/>
+<text x="227" y="93" font-size="12" fill="#9AA6B7" font-weight="500" text-anchor="end">6</text>
+<path d="M25 126v9m0 -4q10 0 10 -7" stroke="#9AA6B7" stroke-width="1.4" fill="none"/>
+<circle cx="25" cy="124" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<circle cx="25" cy="137" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<circle cx="35" cy="124" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<text x="47" y="126" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">frontend</text>
+<text x="47" y="142" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start">staging</text>
+<text x="233" y="131" font-size="12" fill="#82A9EB" font-weight="500" text-anchor="end">ahead 2</text>
+<path d="M25 169v9m0 -4q10 0 10 -7" stroke="#9AA6B7" stroke-width="1.4" fill="none"/>
+<circle cx="25" cy="167" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<circle cx="25" cy="180" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<circle cx="35" cy="167" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<text x="47" y="169" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">backend</text>
+<text x="47" y="185" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start">master</text>
+<rect x="8" y="196" width="236" height="41" rx="5" fill="#304159"/>
+<path d="M25 212v9m0 -4q10 0 10 -7" stroke="#B5D1F4" stroke-width="1.4" fill="none"/>
+<circle cx="25" cy="210" r="2.5" fill="#191C22" stroke="#B5D1F4" stroke-width="1.3"/>
+<circle cx="25" cy="223" r="2.5" fill="#191C22" stroke="#B5D1F4" stroke-width="1.3"/>
+<circle cx="35" cy="210" r="2.5" fill="#191C22" stroke="#B5D1F4" stroke-width="1.3"/>
+<text x="47" y="212" font-size="13" fill="#D9DFE9" font-weight="500" text-anchor="start">conversation-agent</text>
+<text x="47" y="228" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start">task/router</text>
+<rect x="211" y="207" width="22" height="20" rx="5" fill="#55462F"/>
+<text x="222" y="221" font-size="11" fill="#E5AA65" font-weight="600" text-anchor="middle">3</text>
+<path d="M25 255v9m0 -4q10 0 10 -7" stroke="#9AA6B7" stroke-width="1.4" fill="none"/>
+<circle cx="25" cy="253" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<circle cx="25" cy="266" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<circle cx="35" cy="253" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<text x="47" y="255" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">simulation-agent</text>
+<text x="47" y="271" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start">master</text>
+<text x="233" y="260" font-size="12" fill="#82A9EB" font-weight="500" text-anchor="end">behind 5</text>
+<path d="M25 298v9m0 -4q10 0 10 -7" stroke="#9AA6B7" stroke-width="1.4" fill="none"/>
+<circle cx="25" cy="296" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<circle cx="25" cy="309" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<circle cx="35" cy="296" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<text x="47" y="298" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">report-agent</text>
+<text x="47" y="314" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start">staging</text>
+<rect x="211" y="293" width="22" height="20" rx="5" fill="#55462F"/>
+<text x="222" y="307" font-size="11" fill="#E5AA65" font-weight="600" text-anchor="middle">2</text>
+<path d="M25 341v9m0 -4q10 0 10 -7" stroke="#9AA6B7" stroke-width="1.4" fill="none"/>
+<circle cx="25" cy="339" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<circle cx="25" cy="352" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<circle cx="35" cy="339" r="2.5" fill="#191C22" stroke="#9AA6B7" stroke-width="1.3"/>
+<text x="47" y="341" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">common-utils</text>
+<text x="47" y="357" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start">master</text>
+<text x="23" y="394" font-size="13" fill="#9AA6B7" font-weight="500" text-anchor="start">&gt;  Personal</text>
+<text x="227" y="394" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="end">4</text>
+<path d="M16 412L236 412" fill="none" stroke="#373C46" stroke-width="1"/>
+<text x="16" y="438" font-size="11" fill="#9AA6B7" font-weight="600" text-anchor="start">QUICK ACTIONS</text>
+<text x="24" y="465" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">+  Add repository</text>
+<text x="24" y="493" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Rescan workspace</text>
+<text x="24" y="521" font-size="12" fill="#738095" font-weight="400" text-anchor="start">Fetch all  ·  planned</text>
+<text x="24" y="772" font-size="13" fill="#9AA6B7" font-weight="400" text-anchor="start">Settings</text>
+<text x="270" y="61" font-size="16" fill="#D9DFE9" font-weight="600" text-anchor="start">conversation-agent</text>
+<text x="1262" y="61" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="end">~/work/conversation-agent</text>
+<rect x="270" y="75" width="69" height="27" rx="5" fill="#2E333D" stroke="#373C46"/>
+<text x="304.5" y="93" font-size="12" fill="#D9DFE9" font-weight="500" text-anchor="middle">Fetch</text>
+<rect x="346" y="75" width="61" height="27" rx="5" fill="#2E333D" stroke="#373C46"/>
+<text x="376.5" y="93" font-size="12" fill="#D9DFE9" font-weight="500" text-anchor="middle">Pull</text>
+<rect x="414" y="75" width="61" height="27" rx="5" fill="#2E333D" stroke="#373C46"/>
+<text x="444.5" y="93" font-size="12" fill="#D9DFE9" font-weight="500" text-anchor="middle">Push</text>
+<rect x="482" y="75" width="89" height="27" rx="5" fill="#2E333D" stroke="#373C46"/>
+<text x="526.5" y="93" font-size="12" fill="#D9DFE9" font-weight="500" text-anchor="middle">Branch</text>
+<rect x="578" y="75" width="68" height="27" rx="5" fill="#252A32" stroke="#373C46"/>
+<text x="612.0" y="93" font-size="12" fill="#738095" font-weight="500" text-anchor="middle">Stash</text>
+<rect x="1168" y="75" width="94" height="27" rx="5" fill="#2E333D" stroke="#373C46"/>
+<text x="1215.0" y="93" font-size="12" fill="#D9DFE9" font-weight="500" text-anchor="middle">Open</text>
+<path d="M252 108L1280 108" fill="none" stroke="#373C46" stroke-width="1"/>
+<text x="270" y="132" font-size="13" fill="#82A9EB" font-weight="600" text-anchor="start">History</text>
+<path d="M270 145L323 145" fill="none" stroke="#82A9EB" stroke-width="2"/>
+<text x="345" y="132" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Changes  3</text>
+<text x="449" y="132" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Worktrees</text>
+<text x="756" y="132" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">All refs</text>
+<rect x="878" y="115" width="384" height="25" rx="5" fill="#242832" stroke="#373C46"/>
+<text x="890" y="132" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Search commits...</text>
+<rect x="253" y="146" width="1027" height="26" rx="0" fill="#242832"/>
+<text x="266" y="163" font-size="11" fill="#9AA6B7" font-weight="600" text-anchor="start">GRAPH</text>
+<text x="340" y="163" font-size="11" fill="#9AA6B7" font-weight="600" text-anchor="start">COMMIT MESSAGE</text>
+<text x="974" y="163" font-size="11" fill="#9AA6B7" font-weight="600" text-anchor="start">AUTHOR</text>
+<text x="1128" y="163" font-size="11" fill="#9AA6B7" font-weight="600" text-anchor="start">DATE</text>
+<text x="1207" y="163" font-size="11" fill="#9AA6B7" font-weight="600" text-anchor="start">HASH</text>
+<rect x="253" y="172" width="1027" height="28" rx="0" fill="#191C22"/>
+<path d="M271 186.0L271 200" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<path d="M271 186.0 C271 194.96 287 194.96 287 200" fill="none" stroke="#E5AA65" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="271" cy="186.0" r="5" fill="#191C22" stroke="#BC7CE9" stroke-width="1.6"/>
+<circle cx="271" cy="186.0" r="2" fill="#BC7CE9"/>
+<rect x="340" y="177" width="59.2" height="18" rx="4" fill="#654385"/>
+<text x="369.6" y="190" font-size="11" fill="#E5EDF6" font-weight="500" text-anchor="middle">master</text>
+<text x="408.2" y="191" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Merge staging into master</text>
+<text x="974" y="190" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">James</text>
+<text x="1128" y="190" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Nov 23</text>
+<text x="1207" y="190" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">ab37f92</text>
+<rect x="253" y="200" width="1027" height="28" rx="0" fill="#1D2027"/>
+<path d="M271 200L271 228" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<path d="M287 200L287 214.0" fill="none" stroke="#E5AA65" stroke-width="1.8"/>
+<path d="M287 214.0L287 228" fill="none" stroke="#E5AA65" stroke-width="1.8"/>
+<path d="M287 214.0 C287 222.96 303 222.96 303 228" fill="none" stroke="#59C3D0" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="287" cy="214.0" r="5" fill="#1D2027" stroke="#E5AA65" stroke-width="1.6"/>
+<circle cx="287" cy="214.0" r="2" fill="#E5AA65"/>
+<rect x="340" y="205" width="66.4" height="18" rx="4" fill="#73552C"/>
+<text x="373.2" y="218" font-size="11" fill="#E5EDF6" font-weight="500" text-anchor="middle">staging</text>
+<text x="415.4" y="219" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Merge task/router into staging</text>
+<text x="974" y="218" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">James</text>
+<text x="1128" y="218" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Nov 23</text>
+<text x="1207" y="218" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">c72ad10</text>
+<rect x="253" y="228" width="1027" height="28" rx="0" fill="#304159"/>
+<path d="M271 228L271 256" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<path d="M287 228L287 256" fill="none" stroke="#E5AA65" stroke-width="1.8"/>
+<path d="M303 228L303 242.0" fill="none" stroke="#59C3D0" stroke-width="1.8"/>
+<path d="M303 242.0L303 256" fill="none" stroke="#59C3D0" stroke-width="1.8"/>
+<circle cx="303" cy="242.0" r="3.8" fill="#59C3D0"/>
+<rect x="340" y="233" width="95.2" height="18" rx="4" fill="#245B67"/>
+<text x="387.6" y="246" font-size="11" fill="#E5EDF6" font-weight="500" text-anchor="middle">task/router</text>
+<text x="444.2" y="247" font-size="13" fill="#D9DFE9" font-weight="500" text-anchor="start">Improve agent routing logic</text>
+<text x="974" y="246" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Developer</text>
+<text x="1128" y="246" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Nov 23</text>
+<text x="1207" y="246" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">93bc2ea</text>
+<rect x="253" y="256" width="1027" height="28" rx="0" fill="#1D2027"/>
+<path d="M271 256L271 284" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<path d="M287 256L287 284" fill="none" stroke="#E5AA65" stroke-width="1.8"/>
+<path d="M303 256L303 270.0" fill="none" stroke="#59C3D0" stroke-width="1.8"/>
+<path d="M303 270.0L303 284" fill="none" stroke="#59C3D0" stroke-width="1.8"/>
+<circle cx="303" cy="270.0" r="3.8" fill="#59C3D0"/>
+<text x="340" y="275" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Fix fallback for tool invocation</text>
+<text x="974" y="274" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Developer</text>
+<text x="1128" y="274" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Nov 23</text>
+<text x="1207" y="274" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">a1df88e</text>
+<rect x="253" y="284" width="1027" height="28" rx="0" fill="#191C22"/>
+<path d="M271 284L271 312" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<path d="M287 284L287 312" fill="none" stroke="#E5AA65" stroke-width="1.8"/>
+<path d="M303 284L303 298.0" fill="none" stroke="#59C3D0" stroke-width="1.8"/>
+<path d="M303 298.0L303 312" fill="none" stroke="#59C3D0" stroke-width="1.8"/>
+<circle cx="303" cy="298.0" r="3.8" fill="#59C3D0"/>
+<text x="340" y="303" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Update multi-turn tests</text>
+<text x="974" y="302" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Developer</text>
+<text x="1128" y="302" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Nov 23</text>
+<text x="1207" y="302" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">b71aa24</text>
+<rect x="253" y="312" width="1027" height="28" rx="0" fill="#1D2027"/>
+<path d="M271 312L271 340" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<path d="M303 312L303 340" fill="none" stroke="#59C3D0" stroke-width="1.8"/>
+<path d="M287 312L287 326.0" fill="none" stroke="#E5AA65" stroke-width="1.8"/>
+<path d="M287 326.0 C287 334.96 303 334.96 303 340" fill="none" stroke="#59C3D0" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="287" cy="326.0" r="3.8" fill="#E5AA65"/>
+<rect x="340" y="317" width="116.8" height="18" rx="4" fill="#394B61"/>
+<text x="398.4" y="330" font-size="11" fill="#E5EDF6" font-weight="500" text-anchor="middle">origin/staging</text>
+<text x="465.8" y="331" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Merge previous changes</text>
+<text x="974" y="330" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Alex</text>
+<text x="1128" y="330" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Nov 22</text>
+<text x="1207" y="330" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">f1ed3c9</text>
+<rect x="253" y="340" width="1027" height="28" rx="0" fill="#191C22"/>
+<path d="M271 340L271 368" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<path d="M303 340L303 354.0" fill="none" stroke="#59C3D0" stroke-width="1.8"/>
+<path d="M303 354.0L303 368" fill="none" stroke="#59C3D0" stroke-width="1.8"/>
+<circle cx="303" cy="354.0" r="3.8" fill="#59C3D0"/>
+<text x="340" y="359" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Update API response model</text>
+<text x="974" y="358" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Alex</text>
+<text x="1128" y="358" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Nov 22</text>
+<text x="1207" y="358" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">de97a12</text>
+<rect x="253" y="368" width="1027" height="28" rx="0" fill="#1D2027"/>
+<path d="M271 368L271 396" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<path d="M303 368L303 382.0" fill="none" stroke="#59C3D0" stroke-width="1.8"/>
+<path d="M303 382.0 C303 390.96 271 390.96 271 396" fill="none" stroke="#BC7CE9" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="303" cy="382.0" r="3.8" fill="#59C3D0"/>
+<text x="340" y="387" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Improve request validation</text>
+<text x="974" y="386" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Alex</text>
+<text x="1128" y="386" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Nov 22</text>
+<text x="1207" y="386" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">8c4318e</text>
+<rect x="253" y="396" width="1027" height="28" rx="0" fill="#191C22"/>
+<path d="M271 396L271 410.0" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<path d="M271 410.0L271 424" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<path d="M271 410.0 C271 418.96 287 418.96 287 424" fill="none" stroke="#7DA8EF" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="271" cy="410.0" r="5" fill="#191C22" stroke="#BC7CE9" stroke-width="1.6"/>
+<circle cx="271" cy="410.0" r="2" fill="#BC7CE9"/>
+<text x="340" y="415" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Merge previous release</text>
+<text x="974" y="414" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">James</text>
+<text x="1128" y="414" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Nov 21</text>
+<text x="1207" y="414" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">6bd2904</text>
+<rect x="253" y="424" width="1027" height="28" rx="0" fill="#1D2027"/>
+<path d="M271 424L271 452" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<path d="M287 424L287 438.0" fill="none" stroke="#7DA8EF" stroke-width="1.8"/>
+<path d="M287 438.0 C287 446.96 271 446.96 271 452" fill="none" stroke="#BC7CE9" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="287" cy="438.0" r="3.8" fill="#7DA8EF"/>
+<text x="340" y="443" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Fix integration regression</text>
+<text x="974" y="442" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Alex</text>
+<text x="1128" y="442" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Nov 21</text>
+<text x="1207" y="442" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">2ae074c</text>
+<rect x="253" y="452" width="1027" height="28" rx="0" fill="#191C22"/>
+<path d="M271 452L271 466.0" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<path d="M271 466.0L271 480" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<circle cx="271" cy="466.0" r="3.8" fill="#BC7CE9"/>
+<rect x="340" y="457" width="102.4" height="18" rx="4" fill="#3D554A"/>
+<text x="391.2" y="470" font-size="11" fill="#E5EDF6" font-weight="500" text-anchor="middle">v0.1.0-alpha</text>
+<text x="451.4" y="471" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Prepare alpha release</text>
+<text x="974" y="470" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">James</text>
+<text x="1128" y="470" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Nov 20</text>
+<text x="1207" y="470" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">1bb29af</text>
+<rect x="253" y="480" width="1027" height="28" rx="0" fill="#1D2027"/>
+<path d="M271 480L271 494.0" fill="none" stroke="#BC7CE9" stroke-width="1.8"/>
+<circle cx="271" cy="494.0" r="3.8" fill="#BC7CE9"/>
+<text x="340" y="499" font-size="13" fill="#D9DFE9" font-weight="400" text-anchor="start">Initialize agent service</text>
+<text x="974" y="498" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">James</text>
+<text x="1128" y="498" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">Nov 20</text>
+<text x="1207" y="498" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">f3a070d</text>
+<path d="M252 508L1280 508" fill="none" stroke="#373C46" stroke-width="1"/>
+<rect x="253" y="509" width="1027" height="54" rx="0" fill="#20242C"/>
+<text x="270" y="532" font-size="14" fill="#D9DFE9" font-weight="600" text-anchor="start">Improve agent routing logic</text>
+<text x="270" y="550" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start">93bc2ea  ·  Developer  ·  Nov 23  ·  3 changed files</text>
+<text x="1260" y="535" font-size="15" fill="#9AA6B7" font-weight="400" text-anchor="end">v</text>
+<path d="M252 563L1280 563" fill="none" stroke="#373C46" stroke-width="1"/>
+<path d="M532 563L532 796" fill="none" stroke="#373C46" stroke-width="1"/>
+<text x="270" y="584" font-size="11" fill="#9AA6B7" font-weight="600" text-anchor="start">CHANGED FILES</text>
+<text x="548" y="584" font-size="12" fill="#D9DFE9" font-weight="500" text-anchor="start">agent/router.py</text>
+<rect x="260" y="592" width="264" height="28" rx="4" fill="#304159"/>
+<text x="270" y="610" font-size="12" fill="#E5AA65" font-weight="600" text-anchor="start">M</text>
+<text x="290" y="610" font-size="12" fill="#D9DFE9" font-weight="400" text-anchor="start">agent/router.py</text>
+<text x="515" y="610" font-size="11" fill="#7DC7A4" font-weight="400" text-anchor="end">+12  -3</text>
+<text x="270" y="641" font-size="12" fill="#E5AA65" font-weight="600" text-anchor="start">M</text>
+<text x="290" y="641" font-size="12" fill="#D9DFE9" font-weight="400" text-anchor="start">agent/state.py</text>
+<text x="515" y="641" font-size="11" fill="#7DC7A4" font-weight="400" text-anchor="end">+5  -1</text>
+<text x="270" y="672" font-size="12" fill="#7DC7A4" font-weight="600" text-anchor="start">A</text>
+<text x="290" y="672" font-size="12" fill="#D9DFE9" font-weight="400" text-anchor="start">tests/test_router.py</text>
+<text x="515" y="672" font-size="11" fill="#7DC7A4" font-weight="400" text-anchor="end">+23</text>
+<rect x="533" y="592" width="747" height="23" rx="0" fill="#263B50"/>
+<text x="548" y="608" font-size="12" fill="#B9CBE4" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">@@ -40,4 +40,6 @@ def route(state):</text>
+<rect x="533" y="615" width="747" height="23" rx="0" fill="#191C22"/>
+<text x="548" y="631" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">40  40      context = state.context</text>
+<rect x="533" y="638" width="747" height="23" rx="0" fill="#191C22"/>
+<text x="548" y="654" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">41  41      if context is None:</text>
+<rect x="533" y="661" width="747" height="23" rx="0" fill="#452930"/>
+<text x="548" y="677" font-size="12" fill="#E58D95" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">42      -       return default_route(state)</text>
+<rect x="533" y="684" width="747" height="23" rx="0" fill="#203E32"/>
+<text x="548" y="700" font-size="12" fill="#92D8B2" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">    42  +       if state.has_pending_task:</text>
+<rect x="533" y="707" width="747" height="23" rx="0" fill="#203E32"/>
+<text x="548" y="723" font-size="12" fill="#92D8B2" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">    43  +           return task_route(state)</text>
+<rect x="533" y="730" width="747" height="23" rx="0" fill="#203E32"/>
+<text x="548" y="746" font-size="12" fill="#92D8B2" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">    44  +       return default_route(state)</text>
+<rect x="533" y="753" width="747" height="23" rx="0" fill="#191C22"/>
+<text x="548" y="769" font-size="12" fill="#9AA6B7" font-weight="400" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">43  45      return resolve_context(context)</text>
+<circle cx="15" cy="808" r="3.5" fill="#7DC7A4"/>
+<text x="26" y="812" font-size="11" fill="#A0C9B4" font-weight="400" text-anchor="start">6 repositories  ·  2 modified</text>
+<text x="1263" y="812" font-size="11" fill="#9AA6B7" font-weight="400" text-anchor="end">Mock preview   ·   Local Git   ·   v0.1</text>
+</g></g></svg>
