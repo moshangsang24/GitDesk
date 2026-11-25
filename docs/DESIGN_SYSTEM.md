@@ -54,11 +54,18 @@
 
 两套主题共享 `src/styles/tokens.css` 的语义 token。Settings 的 Appearance 提供 System / Light / Dark，默认 System，跟随 macOS 外观并在系统切换时实时更新。应用在本地保存选择。
 
-界面用底色而不是线条建立层次：窗口外框（标题栏、状态栏）→ 侧栏 → 主内容由深到浅；提交详情头部、文件列表和引用区使用介于两者之间的面板色。分隔线只作辅助。暂不使用透明窗口或侧栏毛玻璃（需要 macOS 私有 API，影响上架），以实色分层实现。
+视觉风格为“玻璃”：窗口底层是一层柔和的色彩底（`--window-wash`，左上蓝、左下紫、右上青），标题栏、侧栏和状态栏半透明地叠在上面；仓库内容是一张浮在上面的 12px 圆角卡片，带细描边和柔和阴影。卡片内部仍用底色而不是线条建立层次：提交详情头部、文件列表和引用区使用面板色。渐变只用于窗口色彩底、选中行的强调色渐隐和激活 tab 的下划线，不用于内容区背景、按钮或文字。
+
+当前以实色模拟玻璃（色彩底 + 半透明层），不开启透明窗口。真实的系统毛玻璃（透出桌面壁纸）需要 Tauri 的 macOS 私有 API，会影响上架 Mac App Store，开启前需产品确认并在真机验证拖拽区、交通灯与性能。
 
 | Token | 浅色 | 深色 | 用途 |
 | --- | --- | --- | --- |
-| --bg-chrome | #E6EAF0 | #15171C | 标题栏、状态栏 |
+| --bg-window | #E3E8F1 | #111319 | 窗口底色，叠加 `--window-wash` 色彩底 |
+| --glass | 白 36% | #181B23 35% | 侧栏半透明层（标题栏、状态栏透明） |
+| --sidebar-selected | 白 82% | 白 9% | 侧栏选中项胶囊 |
+| --card-shadow | — | — | 浮动内容卡片的描边与阴影 |
+| --accent-gradient | #4F7CFF→#A96CF0 | #7FA8FF→#C08CFF | 激活 tab 下划线 |
+| --bg-chrome | #E6EAF0 | #15171C | 浏览器标题栏颜色（theme-color） |
 | --bg-sidebar | #ECEFF4 | #17191E | 工作区侧栏 |
 | --bg-main | #FFFFFF | #1D2026 | 主内容、graph、diff 背景 |
 | --bg-row-alt | #F8F9FB | #1A1D23 | 提交表隔行底色 |
@@ -83,13 +90,13 @@
 
 提交图在两套主题中使用相同的 8 色轨道色序（purple、amber、cyan、blue、green、pink、yellow、indigo）。浅色主题取更深、更饱和的一组（如 #8B3FD9、#C2650A、#0A8FA0、#2F6FE0），2px 线条在白底上对比度不低于 3:1；深色主题取更亮的一组。文字与底色组合保持 WCAG AA（4.5:1）以上。提交图是画面的视觉主角，强调色只用于焦点与选中，其余界面保持中性。状态同时使用图标、文字和形状。
 
-字体：`-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`；代码用 `ui-monospace, SFMono-Regular, Menlo, monospace`。默认 13px，重要标题 14px/600，次要 11–12px，组标签 10–11px/600，diff 12px/1.55。常规使用 400/500/600，避免到处粗体。常规间距 4/8/12/16 px；控件圆角 5–6 px，面板分隔线 1px，不使用大圆角卡片。图标 Lucide 14–16px，stroke 1.5–1.8，文本标签优先于猜图标。
+字体：`-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`；代码用 `ui-monospace, SFMono-Regular, Menlo, monospace`。默认 13px，重要标题 14px/600，次要 11–12px，组标签 10–11px/600，diff 12px/1.55。常规使用 400/500/600，避免到处粗体。常规间距 4/8/12/16 px；控件圆角 7 px，分支标签为胶囊；仅主内容区是 12px 圆角浮动卡片，内部面板不再嵌套卡片，面板分隔线 1px。图标 Lucide 14–16px，stroke 1.5–1.8，文本标签优先于猜图标。
 
 ## 3. 组件行为
 
 ### Workspace sidebar
 
-组标题用无底色的小号次要文字，展示展开/折叠和仓库数量。仓库行左侧保留分支图标，中间显示名称和分支，右侧用统一的小胶囊显示 `↑2`、`↓5`、`●3` 或 `!2`。颜色只强调符号，tooltip 和无障碍标签提供完整状态。Clean 留空，状态未知用 `–`。顶部可按仓库名或路径搜索，添加、刷新和 Settings 放在底部。Refresh repository 和 ⌘R 刷新当前仓库。仓库右键菜单包含 Refresh、Reveal in Finder、Open in Terminal 和 Remove from Workspace（移除应用记录）。
+侧栏半透明叠在窗口色彩底上；选中仓库是白色半透明胶囊（深色为浅色半透明），侧栏获得焦点时胶囊加一圈强调色描边。组标题用无底色的小号次要文字，展示展开/折叠和仓库数量。仓库行左侧保留分支图标，中间显示名称和分支，右侧用统一的小胶囊显示 `↑2`、`↓5`、`●3` 或 `!2`。颜色只强调符号，tooltip 和无障碍标签提供完整状态。Clean 留空，状态未知用 `–`。顶部可按仓库名或路径搜索，添加、刷新和 Settings 放在底部。Refresh repository 和 ⌘R 刷新当前仓库。仓库右键菜单包含 Refresh、Reveal in Finder、Open in Terminal 和 Remove from Workspace（移除应用记录）。
 
 ### 面板焦点
 

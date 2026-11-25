@@ -1,10 +1,23 @@
 /*
- * Surfaces step from the window chrome (darkest) through the sidebar to the main
- * content (lightest in light mode). Panels sit between the sidebar and main content.
- * The accent is reserved for focus and selection; the commit graph carries the colour.
+ * Glass: the title bar, sidebar and status bar are translucent over a soft colour
+ * wash; the repository sits on top as a floating sheet. Inside the sheet, panels sit
+ * between the sidebar and main content. Gradients are limited to the window wash and
+ * selection/active indicators; the commit graph carries the colour.
  */
 :root {
   color-scheme: light;
+  --bg-window: #e3e8f1;
+  --window-wash:
+    radial-gradient(900px 620px at 0% 0%, rgb(120 150 255 / .24), transparent 65%),
+    radial-gradient(700px 620px at 0% 100%, rgb(190 130 255 / .16), transparent 62%),
+    radial-gradient(820px 520px at 100% 0%, rgb(90 200 200 / .12), transparent 60%);
+  --glass: rgb(255 255 255 / .36);
+  --glass-line: rgb(255 255 255 / .65);
+  --glass-chip: rgb(255 255 255 / .62);
+  --sidebar-selected: rgb(255 255 255 / .82);
+  --pill-shadow: 0 1px 2px rgb(20 30 60 / .12);
+  --card-shadow: 0 0 0 1px rgb(20 30 70 / .07), 0 12px 36px -12px rgb(30 40 90 / .28);
+  --accent-gradient: linear-gradient(90deg, #4f7cff, #a96cf0);
   --bg-chrome: #e6eaf0;
   --bg-sidebar: #eceff4;
   --bg-main: #ffffff;
@@ -47,6 +60,18 @@
 
 :root[data-theme='dark'] {
   color-scheme: dark;
+  --bg-window: #111319;
+  --window-wash:
+    radial-gradient(900px 620px at 0% 0%, rgb(70 100 230 / .30), transparent 65%),
+    radial-gradient(700px 620px at 0% 100%, rgb(140 70 200 / .22), transparent 62%),
+    radial-gradient(820px 520px at 100% 0%, rgb(30 140 150 / .14), transparent 60%);
+  --glass: rgb(24 27 35 / .35);
+  --glass-line: rgb(255 255 255 / .07);
+  --glass-chip: rgb(255 255 255 / .08);
+  --sidebar-selected: rgb(255 255 255 / .09);
+  --pill-shadow: 0 1px 2px rgb(0 0 0 / .4);
+  --card-shadow: 0 0 0 1px rgb(255 255 255 / .07), 0 18px 44px -14px rgb(0 0 0 / .75);
+  --accent-gradient: linear-gradient(90deg, #7fa8ff, #c08cff);
   --bg-chrome: #15171c;
   --bg-sidebar: #17191e;
   --bg-main: #1d2026;
