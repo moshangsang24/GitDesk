@@ -31,6 +31,8 @@ interface ScanState {
 
 export interface HistoryData extends Pick<RepositoryView, 'commits' | 'graphRows'> {
   sessionId: string;
+  tableKey: string;
+  cacheStatus?: 'refreshing' | 'failed';
   head: Oid | null;
   shallowStamp: string | null;
   refs: GitRef[];
@@ -88,6 +90,7 @@ interface GitDeskState {
   authorFilter: AuthorFilter | null;
   refVisibility: RefVisibility;
   view: Loadable<RepositoryView>;
+  viewRefreshing: boolean;
   history: Loadable<HistoryData>;
   historyNavigation: HistoryNavigation | null;
   scrollSelection: number;
@@ -126,6 +129,22 @@ export function displayError(error: unknown): string {
   return 'An unexpected error occurred.';
 }
 
+const cacheSize = 8;
+
+function remember<T>(cache: Map<string, T>, key: string, value: T) {
+  cache.delete(key);
+  cache.set(key, value);
+  if (cache.size > cacheSize) {
+    const oldest = cache.keys().next();
+    if (!oldest.done) cache.delete(oldest.value);
+  }
+}
+
+function historyKey(repoId: string, worktreeId: string, scope: HistoryScope, focusedRef: string | null, filter: AuthorFilter | null) {
+  return JSON.stringify([repoId, worktreeId, scope, scope === 'ref' ? focusedRef : null,
+    scope === 'mine' && filter ? [filter.baseRef, filter.author.name, filter.author.email] : null]);
+}
+
 export function createGitDeskStore(service: GitService) {
   const native = service.workspace;
   const historyActions = service.history;
@@ -146,6 +165,8 @@ export function createGitDeskStore(service: GitService) {
     let navigation = 0;
     let detailRead: AbortController | null = null;
     const inFlight = new Map<string, SnapshotRead>();
+    const recentViews = new Map<string, RepositoryView>();
+    const recentHistory = new Map<string, HistoryData>();
 
     function cancelRead(read: SnapshotRead | undefined) {
       read?.controller.abort();
@@ -178,11 +199,11 @@ export function createGitDeskStore(service: GitService) {
       return job.promise;
     }
 
-    function stopHistory() {
+    function stopHistory(preview?: HistoryData) {
       if (session) void historyActions?.close(session.id).catch(() => undefined);
       session = null;
       navigation += 1;
-      set({ history: { phase: 'idle' }, historyNavigation: null });
+      set({ history: preview ? { phase: 'ready', data: preview } : { phase: 'idle' }, historyNavigation: null });
     }
 
     function appendHistory(current: HistorySession, page: HistoryPage, data: HistoryData): HistoryData {
@@ -208,14 +229,15 @@ export function createGitDeskStore(service: GitService) {
       set({ detail: null });
     }
 
-    async function startHistory(preferredOid = get().selectedCommitOid, reopen = true) {
+    async function startHistory(preferredOid = get().selectedCommitOid, reopen = true, preview?: HistoryData) {
       if (!historyActions) return;
       const { repoId, worktreeId, scope, focusedRef, authorFilter, page } = get();
       if (page !== 'history' || !repoId || !worktreeId || get().view.phase !== 'ready') return;
-      stopHistory();
+      const cacheKey = historyKey(repoId, worktreeId, scope, focusedRef, authorFilter);
+      stopHistory(preview);
       const current: HistorySession = { id: crypto.randomUUID(), layout: new HistoryLayout(), labels: new Map(), sequence: 0, request: null };
       session = current;
-      set({ history: { phase: 'loading' } });
+      if (!preview) set({ history: { phase: 'loading' } });
       try {
         const selectedAuthor = scope === 'mine' ? authorFilter ?? undefined : undefined;
         const { page: first, refs, head, shallowStamp, myBranchRefs } = await historyActions.open(current.id, repoId, worktreeId, scope, focusedRef, selectedAuthor);
@@ -227,20 +249,27 @@ export function createGitDeskStore(service: GitService) {
         const displayRefs = matching ? refs.filter((ref) => ref.kind === 'tag' || matching.has(ref.fullName)) : refs;
         current.labels = labelsByOid(displayRefs, head);
         const data = appendHistory(current, first, {
-          sessionId: current.id, refs, displayRefs, head, shallowStamp, commits: [], graphRows: [], hasMore: false, paging: false, stale: false, pageMessage: null,
+          sessionId: current.id, tableKey: preview?.tableKey ?? current.id, refs, displayRefs, head, shallowStamp, commits: [], graphRows: [], hasMore: false, paging: false, stale: false, pageMessage: null,
         });
+        remember(recentHistory, cacheKey, data);
         const remembered = reopen && service.review ? readInspection(repoId, worktreeId) : null;
         const recorded = data.commits.find(({ oid }) => oid === remembered?.oid);
-        const selected = recorded ?? data.commits.find(({ oid }) => oid === preferredOid) ?? data.commits[0];
+        const selectedOid = preview ? get().selectedCommitOid ?? preferredOid : preferredOid;
+        const selected = recorded ?? data.commits.find(({ oid }) => oid === selectedOid) ?? data.commits[0];
         set({ history: { phase: 'ready', data }, selectedCommitOid: selected?.oid ?? null });
         if (recorded && remembered) {
           const parent = remembered.parentOid && recorded.parents.includes(remembered.parentOid) ? remembered.parentOid : undefined;
-          await get().openCommit(recorded.oid, parent);
+          if (get().detail?.commit.oid !== recorded.oid || get().detail?.parentOid !== (parent ?? recorded.parents[0] ?? null)) {
+            await get().openCommit(recorded.oid, parent);
+          }
         }
       } catch (error) {
         if (session !== current) return;
-        stopHistory();
-        set({ history: { phase: 'error', message: displayError(error) } });
+        if (preview) stopHistory({ ...preview, cacheStatus: 'failed', pageMessage: `Could not refresh cached history. ${displayError(error)}` });
+        else {
+          stopHistory();
+          set({ history: { phase: 'error', message: displayError(error) } });
+        }
       }
     }
 
@@ -350,17 +379,38 @@ export function createGitDeskStore(service: GitService) {
       const request = ++viewRequest;
       const revision = catalogRevision;
       const previous = get();
+      let showCachedView = false;
       const observedSession = previous.history.phase === 'ready' ? session : null;
       const preferredOid = previous.repoId === repoId && previous.worktreeId === worktreeId ? previous.selectedCommitOid : null;
       if (!silent) {
         if (previous.repoId !== repoId) cancelRead(inFlight.get(previous.repoId));
+        const switching = previous.repoId !== repoId || previous.worktreeId !== worktreeId;
+        const savedView = native && switching && !fresh ? recentViews.get(repoId) : undefined;
+        const cached = savedView?.repository?.worktrees.some(({ id }) => id === worktreeId) ? savedView : undefined;
+        const lastHistory = cached && get().page === 'history'
+          ? recentHistory.get(historyKey(repoId, worktreeId, scope, previous.focusedRef, previous.authorFilter))
+          : undefined;
+        const preview: HistoryData | undefined = lastHistory && {
+          ...lastHistory, cacheStatus: 'refreshing', stale: true, hasMore: false, paging: false,
+          pageMessage: 'Showing cached history · Refreshing…',
+        };
         clearInspection();
         stopHistory();
-        set({ repoId, worktreeId, scope, view: { phase: 'loading' }, selectedCommitOid: null, detail: null });
+        set({
+          repoId, worktreeId, scope,
+          view: cached ? { phase: 'ready', data: cached } : { phase: 'loading' },
+          viewRefreshing: !!cached,
+          history: preview ? { phase: 'ready', data: preview } : { phase: 'idle' },
+          selectedCommitOid: preview?.commits[0]?.oid ?? null, detail: null,
+        });
+        if (cached) {
+          remember(recentViews, repoId, cached);
+          showCachedView = true;
+        }
       }
 
       try {
-        const data = await read(repoId, worktreeId, scope, fresh);
+        const data = await read(repoId, worktreeId, scope, fresh || showCachedView);
         if (revision !== catalogRevision || request !== viewRequest) return;
 
         if (data.repository) {
@@ -368,11 +418,15 @@ export function createGitDeskStore(service: GitService) {
           const treeId = repository.worktrees.some(({ id }) => id === worktreeId)
             ? worktreeId : repository.primaryWorktreeId;
           publishRepository(repository);
-          set({ worktreeId: treeId, view: { phase: 'ready', data } });
+          remember(recentViews, repoId, data);
+          set({ worktreeId: treeId, view: { phase: 'ready', data }, viewRefreshing: false });
           if (!silent || treeId !== worktreeId) persistSelection();
           updateWatcher(repoId, treeId);
-          if (!silent || treeId !== worktreeId || get().history.phase === 'idle') await startHistory(preferredOid);
-          else if (observedSession && session === observedSession) verifyHistorySnapshot(data, treeId);
+          const history = get().history;
+          const preview = treeId === worktreeId && history.phase === 'ready' && history.data.cacheStatus ? history.data : undefined;
+          if (!silent || treeId !== worktreeId || history.phase === 'idle' || (preview && !session)) {
+            await startHistory(preferredOid, true, preview);
+          } else if (observedSession && session === observedSession) verifyHistorySnapshot(data, treeId);
         } else {
           set({ view: { phase: 'ready', data } });
           if (get().page === 'history') await openHead(data, repoId, worktreeId);
@@ -380,8 +434,11 @@ export function createGitDeskStore(service: GitService) {
       } catch (error) {
         if (revision !== catalogRevision || request !== viewRequest) return;
         const message = displayError(error);
-        if (native) unknownRepository(repoId, message);
-        set({ view: { phase: 'error', message } });
+        if (native) {
+          recentViews.delete(repoId);
+          unknownRepository(repoId, message);
+        }
+        set({ view: { phase: 'error', message }, viewRefreshing: false });
       }
     }
 
@@ -400,9 +457,15 @@ export function createGitDeskStore(service: GitService) {
             if (get().repoId === id) return;
             try {
               const result = await read(id, '', 'all');
-              if (revision === catalogRevision && get().repoId !== id && result.repository) publishRepository(result.repository);
+              if (revision === catalogRevision && get().repoId !== id && result.repository) {
+                if (recentViews.has(id) || recentViews.size < cacheSize) recentViews.set(id, result);
+                publishRepository(result.repository);
+              }
             } catch (error) {
-              if (revision === catalogRevision && get().repoId !== id) unknownRepository(id, displayError(error));
+              if (revision === catalogRevision && get().repoId !== id) {
+                recentViews.delete(id);
+                unknownRepository(id, displayError(error));
+              }
             }
           }));
         }
@@ -414,6 +477,8 @@ export function createGitDeskStore(service: GitService) {
 
     async function applyCatalog(next: WorkspaceCatalog, prefer: WorkspaceSelection | null) {
       catalogRevision += 1;
+      recentViews.clear();
+      recentHistory.clear();
       for (const read of inFlight.values()) cancelRead(read);
       const fallback = next.workspaces.flatMap(({ repositoryIds }) => repositoryIds).find((id) => next.repositories[id]);
       const repoId = prefer && next.repositories[prefer.repoId] ? prefer.repoId : fallback ?? '';
@@ -426,7 +491,7 @@ export function createGitDeskStore(service: GitService) {
       if (!repoId) {
         ++viewRequest;
         stopHistory();
-        set({ view: { phase: 'idle' }, detail: null, selectedCommitOid: null });
+        set({ view: { phase: 'idle' }, viewRefreshing: false, detail: null, selectedCommitOid: null });
         updateWatcher('', '');
         return;
       }
@@ -493,6 +558,7 @@ export function createGitDeskStore(service: GitService) {
       ...readHistoryPreferences(initialRepo?.id ?? ''),
       page: 'history',
       view: { phase: 'idle' },
+      viewRefreshing: false,
       history: { phase: 'idle' },
       historyNavigation: null,
       scrollSelection: 0,
@@ -530,9 +596,15 @@ export function createGitDeskStore(service: GitService) {
         } else if (current.catalog.repositories[repoId]) {
           try {
             const result = await read(repoId, '', 'all', true);
-            if (revision === catalogRevision && get().repoId !== repoId && result.repository) publishRepository(result.repository);
+            if (revision === catalogRevision && get().repoId !== repoId && result.repository) {
+              if (recentViews.has(repoId)) recentViews.set(repoId, result);
+              publishRepository(result.repository);
+            }
           } catch (error) {
-            if (revision === catalogRevision && get().repoId !== repoId) unknownRepository(repoId, displayError(error));
+            if (revision === catalogRevision && get().repoId !== repoId) {
+              recentViews.delete(repoId);
+              unknownRepository(repoId, displayError(error));
+            }
           }
         }
       },
@@ -636,7 +708,7 @@ export function createGitDeskStore(service: GitService) {
         if (native) {
           clearInspection();
           persistSelection();
-          if (page === 'history') void startHistory();
+          if (page === 'history' && !get().viewRefreshing) void startHistory();
           else stopHistory();
           return;
         }
@@ -655,7 +727,7 @@ export function createGitDeskStore(service: GitService) {
         if (native) clearInspection();
         set({ scope, focusedRef: nextRef });
         saveHistoryPreferences(repoId, get());
-        if (historyActions && view.phase === 'ready') await startHistory();
+        if (historyActions && view.phase === 'ready' && !get().viewRefreshing) await startHistory();
         else await loadView(repoId, worktreeId, scope);
       },
 
@@ -666,7 +738,7 @@ export function createGitDeskStore(service: GitService) {
         set({ authorFilter, scope: 'mine', focusedRef: null, page: 'history' });
         saveHistoryPreferences(repoId, get());
         persistSelection();
-        if (view.phase === 'ready') await startHistory();
+        if (view.phase === 'ready' && !get().viewRefreshing) await startHistory();
         else await loadView(repoId, worktreeId, 'mine');
       },
 

@@ -255,7 +255,7 @@ Release 查询独立于 History session，绑定仓库、请求、目标配置�
 
 ## 5. State, caching, freshness
 
-Logical repository cache stores history by session and frozen ref set; worktree cache stores local status by WorktreeId. Selection store uses `{workspaceId, repoId, worktreeId, page}` and per-repo view settings. History selection uses stable full commit OID. On switch, generate requestId and discard responses that do not match selection/generation; no stale data presented as current.
+History records use the frozen ref set of the active session. GitDesk keeps up to eight recent repository snapshots and eight History first pages in memory. History previews are keyed by repository, worktree, scope and any selected ref or author filter. Returning to a cached view shows it immediately with a refresh indicator. A new read revalidates the worktree and opens a new History session before pagination resumes. Selection and request generations discard late results. Workspace registration changes clear the caches.
 
 M3 将 `HistoryRefVisibility` 保存在 `RepoId` 对应的视图设置中，两项缺省值都为 `true`。开关作用于冻结引用在列表和 Branch / Tag 列中的呈现，沿用现有会话和轨道状态。历史范围作为独立的 `open_history` 输入，切换时生成新会话。定位引用使用冻结的目标 OID，按当前会话的分页顺序查找。
 

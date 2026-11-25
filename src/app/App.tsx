@@ -59,6 +59,7 @@ export function App() {
   const searchOlderHistory = useGitDesk((state) => state.searchOlderHistory);
   const cancelHistoryNavigation = useGitDesk((state) => state.cancelHistoryNavigation);
   const view = useGitDesk((state) => state.view);
+  const viewRefreshing = useGitDesk((state) => state.viewRefreshing);
   const detail = useGitDesk((state) => state.detail);
   const selectedOid = useGitDesk((state) => state.selectedCommitOid);
   const setPage = useGitDesk((state) => state.setPage);
@@ -190,7 +191,7 @@ export function App() {
 
   function trackTask() {
     const ids = activeTracking?.ids.length ? activeTracking.ids : selectedOid ? [selectedOid] : [];
-    if (!repo || !ids.length) return;
+    if (!repo || !ids.length || viewRefreshing || localHistory?.cacheStatus) return;
     setReleaseDraft({ repoId: repo.id, ids });
     setTracking(null);
     setPage('releases');
@@ -309,6 +310,9 @@ export function App() {
               </div>
 
               <div className="repository-page">
+                {viewRefreshing && page !== 'history' && page !== 'releases' && (
+                  <div className="workspace-banner" role="status">Showing cached repository · Refreshing…</div>
+                )}
                 {view.phase === 'error' ? (
                   <Notice title={local ? 'Could not read repository' : 'Could not open sample repository'} kind="error" onRetry={() => { void refresh(); }}>{view.message}</Notice>
                 ) : !data && local ? (
@@ -320,7 +324,7 @@ export function App() {
                 ) : page === 'refs' ? (
                   <RefsView key={repo.id} search={refsSearch} refs={data.refs ?? []} worktree={worktree} worktrees={repo.worktrees} />
                 ) : page === 'releases' ? (
-                  <ReleasesView key={repo.id} repoId={repo.id} refs={data.refs ?? []} shallowStamp={data.shallowStamp} worktree={worktree} draft={releaseDraft?.repoId === repo.id ? releaseDraft.ids : null} onClearDraft={() => setReleaseDraft(null)} />
+                  viewRefreshing ? <Notice title="Refreshing repository…" kind="loading" /> : <ReleasesView key={repo.id} repoId={repo.id} refs={data.refs ?? []} shallowStamp={data.shallowStamp} worktree={worktree} draft={releaseDraft?.repoId === repo.id ? releaseDraft.ids : null} onClearDraft={() => setReleaseDraft(null)} />
                 ) : page === 'changes' ? (
                   local ? (
                     <>
@@ -340,7 +344,7 @@ export function App() {
                     {showRefs && <HistoryRefs key={repo.id} refs={localHistory?.displayRefs ?? (scope === 'mine' ? [] : historyData?.refs ?? data.refs ?? [])} worktrees={repo.worktrees} worktreeId={worktreeId} />}
                     <div className="history-main">
                       {!historyData ? <Notice title="Loading commits…" kind="loading" /> : historyData.commits.length ? (
-                        <HistoryTable key={localHistory?.sessionId ?? `${worktreeId}-${scope}-${focusedRef}`} data={historyData} gridRef={historyGrid} query={historyQuery} matches={matchIds} showHash={showHash} viewportWidth={historyWidth} hasMore={localHistory?.hasMore} paging={localHistory?.paging} releaseStatus={local && showReleaseColumns} tracking={activeTracking ? { ids: activeTracking.ids, onToggle: (oid) => setTracking({ ...activeTracking, ids: activeTracking.ids.includes(oid) ? activeTracking.ids.filter((id) => id !== oid) : activeTracking.ids.length < 200 ? [...activeTracking.ids, oid] : activeTracking.ids }) } : undefined} />
+                        <HistoryTable key={localHistory?.tableKey ?? `${worktreeId}-${scope}-${focusedRef}`} data={historyData} gridRef={historyGrid} query={historyQuery} matches={matchIds} showHash={showHash} viewportWidth={historyWidth} hasMore={localHistory?.hasMore} paging={localHistory?.paging} releaseStatus={local && showReleaseColumns && !localHistory?.cacheStatus} tracking={activeTracking ? { ids: activeTracking.ids, onToggle: (oid) => setTracking({ ...activeTracking, ids: activeTracking.ids.includes(oid) ? activeTracking.ids.filter((id) => id !== oid) : activeTracking.ids.length < 200 ? [...activeTracking.ids, oid] : activeTracking.ids }) } : undefined} />
                       ) : <Notice title={scope === 'mine' ? 'No branches match this author' : scope === 'all' ? 'No commits yet' : 'No commits in this history scope'} />}
                       {(localHistory?.commits.length || localHistory?.hasMore || localHistory?.pageMessage || historyNavigation) ? (
                         <div className="history-footer">
@@ -351,11 +355,11 @@ export function App() {
                               {historyNavigation?.phase === 'continue' && navigationOid && localHistory?.hasMore && <button className="control" onClick={() => { void locateCommit(navigationOid); }}>Keep looking</button>}
                               {localHistory?.hasMore && historyQuery.trim() && <button className="control" onClick={searchOlder}>Search older</button>}
                               {localHistory?.hasMore && <button className="control" disabled={localHistory.paging} onClick={() => { void loadMoreHistory(); }}>Load older</button>}
-                              {localHistory?.pageMessage && <button className="control" onClick={() => { void refresh(); }}>Refresh</button>}
+                              {localHistory?.pageMessage && localHistory.cacheStatus !== 'refreshing' && <button className="control" onClick={() => { void refresh(); }}>Refresh</button>}
                               {localHistory && !!localHistory.commits.length && (
                                 <>
-                                  <button className="control" aria-pressed={!!activeTracking} onClick={() => setTracking(activeTracking ? null : { sessionId: localHistory.sessionId, ids: selectedOid ? [selectedOid] : [] })}>{activeTracking ? 'Cancel selection' : 'Select commits'}</button>
-                                  <button className="control" disabled={activeTracking ? !activeTracking.ids.length : !selectedOid} onClick={trackTask}>Track as task{activeTracking ? ` (${activeTracking.ids.length})` : ''}</button>
+                                  <button className="control" disabled={!!localHistory.cacheStatus} aria-pressed={!!activeTracking} onClick={() => setTracking(activeTracking ? null : { sessionId: localHistory.sessionId, ids: selectedOid ? [selectedOid] : [] })}>{activeTracking ? 'Cancel selection' : 'Select commits'}</button>
+                                  <button className="control" disabled={!!localHistory.cacheStatus || (activeTracking ? !activeTracking.ids.length : !selectedOid)} onClick={trackTask}>Track as task{activeTracking ? ` (${activeTracking.ids.length})` : ''}</button>
                                 </>
                               )}
                             </>

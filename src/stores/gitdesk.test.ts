@@ -108,6 +108,68 @@ describe('native History', () => {
     return { store: createGitDeskStore({ ...service, history: { open, close, loadPage } }), open, close };
   }
 
+  it('shows a visited repository and its first page immediately, then opens a fresh paging session', async () => {
+    const other = mock.getCatalog().repositories.backend;
+    const workspace = { id: 'test', name: 'Test', rootPath: '/tmp/test-history', repositoryIds: [repo.id, other.id] };
+    const repositories = { [repo.id]: repo, [other.id]: other };
+    const returningView = deferred<RepositoryView>();
+    const returningHistory = deferred<OpenHistory>();
+    const snapshot = (repoId: string) => ({ repository: repositories[repoId], refs: first.refs, commits: [], graphRows: [], changes: [] });
+    const newHead = 'e'.repeat(40);
+    let returning = false;
+    const service = localService({ workspaces: [workspace], repositories }, async (repoId) => {
+      return repoId === repo.id && returning ? returningView.promise : snapshot(repoId);
+    });
+    const open = vi.fn(async (_sessionId: string, repoId: string) => {
+      if (repoId === repo.id && returning) return returningHistory.promise;
+      return repoId === repo.id ? first : {
+        ...first, head: other.worktrees[0].head, page: { ...first.page, commits: [record('f'.repeat(40))], hasMore: false },
+      };
+    });
+    const loadPage = vi.fn(async () => second);
+    const close = vi.fn(async () => undefined);
+    const store = createGitDeskStore({ ...service, history: { open, close, loadPage } });
+
+    await store.getState().initialize();
+    const earlier = store.getState().history;
+    if (earlier.phase !== 'ready') throw new Error('Expected initial history');
+    await store.getState().loadMoreHistory();
+    await store.getState().openRepository(other.id);
+    returning = true;
+    const switching = store.getState().openRepository(repo.id);
+    expect(store.getState()).toMatchObject({
+      repoId: repo.id, viewRefreshing: true, view: { phase: 'ready', data: { repository: repo } },
+      history: { phase: 'ready', data: { cacheStatus: 'refreshing', commits: [{ oid: head }], hasMore: false } },
+    });
+    expect(await store.getState().loadMoreHistory()).toBe(false);
+    expect(loadPage).toHaveBeenCalledTimes(1);
+
+    returningView.resolve(snapshot(repo.id));
+    await vi.waitFor(() => expect(open).toHaveBeenCalledTimes(3));
+    expect(store.getState().history).toMatchObject({
+      phase: 'ready', data: { cacheStatus: 'refreshing', tableKey: earlier.data.tableKey },
+    });
+    returningHistory.resolve({ ...first, head: newHead, page: { ...first.page, commits: [record(newHead)], hasMore: false } });
+    await switching;
+    const updated = store.getState().history;
+    if (updated.phase !== 'ready') throw new Error('Expected revalidated history');
+    expect(updated.data.cacheStatus).toBeUndefined();
+    expect(updated.data.tableKey).toBe(earlier.data.tableKey);
+    expect(updated.data.sessionId).not.toBe(earlier.data.sessionId);
+    expect(updated.data.commits.map(({ oid }) => oid)).toEqual([newHead]);
+    expect(close).toHaveBeenCalledWith(earlier.data.sessionId);
+
+    await store.getState().openRepository(other.id);
+    open.mockRejectedValueOnce(new Error('Git could not open the new history.'));
+    await store.getState().openRepository(repo.id);
+    expect(store.getState().history).toMatchObject({
+      phase: 'ready', data: {
+        cacheStatus: 'failed', stale: true, hasMore: false,
+        commits: [{ oid: newHead }], pageMessage: expect.stringContaining('Git could not open the new history.'),
+      },
+    });
+  });
+
   it('locates a reference across a page seam and remembers both display switches', async () => {
     const storage = new Map<string, string>();
     vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key), setItem: (key: string, value: string) => storage.set(key, value) });

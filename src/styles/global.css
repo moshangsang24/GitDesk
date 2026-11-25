@@ -758,7 +758,6 @@ button.control.worktree-viewing:hover { background: transparent; }
   color: var(--text-primary);
 }
 .release-form textarea, .release-range input { font-family: var(--font-code); }
-.release-form .release-range-toggle { justify-self: start; }
 .release-range { padding: 8px; border: 1px solid var(--border-subtle); border-radius: 4px; }
 .release-candidates { max-height: 160px; overflow: auto; margin-top: 5px; }
 .release-candidates label { display: grid; grid-template-columns: 15px 7ch minmax(100px, 1fr) minmax(60px, 140px); padding: 4px; align-items: center; }

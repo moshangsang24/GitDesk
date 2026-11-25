@@ -52,7 +52,7 @@ pnpm tauri dev
 
 1. 在 **History** 点开合并提交，通过 **Compare parent** 比较两个父提交。选中文件后读取对应 Diff。哈希按钮复制完整提交 ID。
 2. 在 **Changes** 检查 Staged、Unstaged、Untracked 和 Conflicts。已暂存且又有修改的文件会在两个区各显示一份比较。选中文件后滚动 Patch，再修改同一文件，核对预览更新时保留滚动位置。若清理过滤器影响判断，状态栏会提示。工具栏的文件夹按钮可打开当前 worktree 的 Finder 或 Terminal。
-3. 在 **Releases** 用 **Configure targets** 选 Test、Staging、Prod 的远程跟踪分支。回到 History 单选或多选提交后点 **Track as task**，也可以从 Releases 按分支范围确认候选。切换 Test 后，点击比例查看新结果和旧目标的历史观察。
+3. 在 **Releases** 用 **Configure targets** 选 Test、Staging、Prod 的远程跟踪分支。用 **Add task → Review commits vs origin/master** 查看当前任务分支的候选。用 `task/5111-period-causality-rework` 验证标题和任务号自动填入。也可以在 History 选中提交后点 **Track as task**，或在表单展开自定义范围。切换 Test 后，点击比例查看新结果和旧目标的历史观察。
 4. 在 History 的 **Show references** 菜单里勾选 **Release status**，查看逐提交状态。Releases 使用本地引用快照，主动 Fetch 完成后刷新快照和证据。[发布流转追踪](docs/RELEASE_TRACKING.md)
 
 ### M3 提交图验收
@@ -66,7 +66,7 @@ pnpm tauri dev
 
 1. 打开包含两个 Git 仓库的文件夹，确认左侧显示仓库。用各工作区标题旁的按钮重新扫描或移除该工作区，也可以从侧栏补加单个 Git 仓库。
 2. 在 **Branches** 查看本地分支、远程跟踪分支和标签。在 **Worktrees** 选择关联目录，确认分支、修改计数和路径随浏览对象更新。
-3. 在临时仓库或 worktree 中新增文件，确认桌面窗口可见时修改计数自动更新。关闭并重开应用，确认恢复工作区和所选 worktree。
+3. 打开两个仓库再切回第一个，查看 History 首屏的缓存内容和后台刷新。随后在临时仓库或 worktree 中新增文件，确认桌面窗口可见时修改计数自动更新。关闭并重开应用，确认恢复工作区和所选 worktree。
 
 将鼠标移到仓库行，点右侧 **×** 可将它从该工作区移除。重新扫描会保留这项设置，仓库文件依然保留在磁盘上。要恢复显示，用该工作区旁的 **+** 重新选中仓库根目录。
 

@@ -240,7 +240,7 @@ export function ReleasesView({ repoId, refs, shallowStamp, worktree, draft, onCl
       {fetchActivityError && <p className="release-error" role="status">{fetchActivityError}</p>}
       {error && <p className="release-error" role="alert">{error}</p>}
       {panel === 'targets' && <TargetForm release={release} key={overview.targetRevision} repoId={repoId} refs={refs} overview={overview} onSave={saved} onClose={closeForm} />}
-      {panel === 'task' && <TaskForm release={release} key={edit?.id ?? 'new'} repoId={repoId} refs={refs} worktree={worktree} inputOids={draft ?? []} task={edit} onSave={saved} onClose={closeForm} />}
+      {panel === 'task' && <TaskForm release={release} key={`${worktree.id}:${edit?.id ?? 'new'}`} repoId={repoId} refs={refs} worktree={worktree} inputOids={draft ?? []} task={edit} onSave={saved} onClose={closeForm} />}
       <div className="release-list-controls">
         <button className="control" onClick={() => { setPanel('task'); setEdit(undefined); }}>Add task</button>
         <input type="search" aria-label="Search tasks" placeholder="Search tasks…" value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} />
