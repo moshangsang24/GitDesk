@@ -52,7 +52,7 @@
 
 ## 2. Design tokens
 
-两套主题共享 `src/styles/tokens.css` 的语义 token。Settings 的 Appearance 提供 System / Light / Dark，默认 System，跟随 macOS 外观并在系统切换时实时更新。应用在本地保存选择。
+两套主题共享 `src/styles/tokens.css` 的语义 token。Settings 的 Appearance 提供 System / Light / Dark，默认 System，跟随 macOS 外观并在系统切换时实时更新。Accent color 提供 Blue（默认）、Violet、Teal、Rose 四种强调色，通过根元素的 `data-accent` 覆盖 `--accent`、`--bg-selected`、`--accent-gradient` 和窗口色彩底的主色调；每种强调色在浅色和深色下都满足 WCAG AA。应用在本地保存选择。
 
 视觉风格为“玻璃”：窗口底层是一层柔和的色彩底（`--window-wash`，左上蓝、左下紫、右上青），标题栏、侧栏和状态栏半透明地叠在上面；仓库内容是一张浮在上面的 12px 圆角卡片，带细描边和柔和阴影。卡片内部仍用底色而不是线条建立层次：提交详情头部、文件列表和引用区使用面板色。渐变只用于窗口色彩底、选中行的强调色渐隐和激活 tab 的下划线，不用于内容区背景、按钮或文字。
 
@@ -112,6 +112,7 @@ History 的列顺序为 Branch / Tag、Graph、Commit Message、Author、Date、
 
 #### 引用区与图上的标签
 
+- 引用区和 Branches 页按分支名第一个 `/` 之前的前缀分组：两个及以上分支共用前缀时折叠为文件夹（显示数量），单个前缀的分支保持原名。包含当前检出分支的文件夹默认展开，其他默认收起；搜索时全部展开。当前检出的分支加粗并带强调色圆点。
 - History 提供可折叠的引用区。仓库区域窄于 950 px 时默认收起引用区，工具栏按钮可手动展开。工作区侧栏用于切换仓库。引用区分 **Local、Remote、Tags、Worktrees**，分组标题显示数量。Remote 按 `origin`、`upstream` 等远程名再分组，支持搜索完整名称。Worktrees 条目用于切换查看对象。
 - 图上的标签按 HEAD → 本地分支 → 远程跟踪分支 → tag 排列。标签颜色取所在提交节点的轨道色：淡色底 + 主文字色 + 类型标记，本地分支为实心圆点，远程跟踪分支为空心圆环，tag 为菱形，HEAD 为强调色空心圆（tooltip 与无障碍标签写明类型）。Branch / Tag 列常规为 162 px，提交表窄于 850 px 时收为 112 px，溢出显示可展开的 `+N`。`main` 和 `origin/main` 指向同一提交时同一行显示，指向不同提交时各自标在目标行上。领先、落后数量在已有上游和计数时显示。
 - 单击分支或标签定位到它指向的提交，沿用当前历史范围。目标在范围内但尚未加载时，显示定位进度并按页查找。当前范围中找不到目标时，提供切换到 **All refs** 的入口。分支另有 **Focus branch** 操作，由用户显式触发。
@@ -156,6 +157,12 @@ History 的列顺序为 Branch / Tag、Graph、Commit Message、Author、Date、
 - 焦点所在行可用 ⇧F10 打开同一份菜单。选中提交且没有文字选区时，⌘C 复制完整 hash。
 - 屏蔽 WebView 默认右键菜单；输入框、Diff 和提交说明等可选中文字区域保留系统的复制菜单。
 - 单个文件的 Reveal in Finder 需要新增只读 IPC（沿用 registry 和 file id 校验），待后端排期后加入。
+
+### Branches 与工作区状态
+
+- 顶部状态条左侧是工作区：总改动胶囊（有改动为琥珀色，冲突为红色，干净为绿色），随后是 Staged（绿）、Unstaged（琥珀）、Untracked（青，`--status-untracked`）、Conflicts（红）四个带色点的计数，计数为 0 时淡化。右侧是同步：上游名称与 ↑ahead（强调色）/ ↓behind（琥珀）胶囊，或 Up to date / No upstream。Changes 页的分组标题使用同一套颜色。
+- Branches 表格列为 Name、Tracking、Worktree、Commit 和悬停时出现的 Show in History。Tracking：当前分支显示真实上游与 ahead/behind；其他本地分支与同名的 `origin/<name>` 比较，显示 Same as / Differs from / Local only；远程分支显示是否有对应本地分支。Worktree 列显示检出该分支的 worktree。行支持右键菜单。
+- 每个分支的最后提交时间、作者、标题以及非当前分支的 ahead/behind 计数需要后端在读取 refs 时提供，待后端排期后加入。
 
 ### Worktrees
 

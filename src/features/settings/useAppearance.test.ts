@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { parseAccent } from './preferences';
 import { parseAppearance, resolveAppearance } from './useAppearance';
 
 describe('appearance preference', () => {
@@ -20,5 +21,13 @@ describe('appearance preference', () => {
     expect(resolveAppearance('system', true)).toBe('dark');
     expect(resolveAppearance('system', false)).toBe('light');
     expect(resolveAppearance('light', true)).toBe('light');
+  });
+});
+
+describe('accent preference', () => {
+  it('falls back to blue for unknown values', () => {
+    expect(parseAccent(null)).toBe('blue');
+    expect(parseAccent('violet')).toBe('violet');
+    expect(parseAccent('neon')).toBe('blue');
   });
 });

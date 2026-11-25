@@ -49,8 +49,10 @@ function RefBadges({ refs, limit, color, onMenu }: { refs: RefLabel[]; limit: nu
   // The HEAD marker is a compact ring, so it does not use up one of the visible label slots.
   const head = refs.filter(({ kind }) => kind === 'head');
   const named = refs.filter(({ kind }) => kind !== 'head');
-  const visible = named.slice(0, limit);
-  const overflow = named.slice(limit);
+  // Two long names would both truncate to a few letters; show one and fold the rest into +N.
+  const fits = limit > 1 && named.slice(0, 2).reduce((total, { name }) => total + name.length, 0) > 20 ? 1 : limit;
+  const visible = named.slice(0, fits);
+  const overflow = named.slice(fits);
   return (
     <div className="ref-labels">
       {head.map((label) => <RefBadge key="head" label={label} color={color} />)}

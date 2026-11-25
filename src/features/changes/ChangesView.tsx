@@ -36,8 +36,12 @@ export function ChangesView({ changes, query, fileWidth, onResizeFiles, revision
           if (!files.length) return null;
 
           return (
-            <section key={group}>
-              <h2 className="section-caption change-group-heading">{group}<span>{files.length}</span></h2>
+            <section key={group} className={`change-group change-${group.toLowerCase()}`}>
+              <h2 className="section-caption change-group-heading">
+                <span className="change-dot" aria-hidden="true" />
+                {group}
+                <span className="change-group-count">{files.length}</span>
+              </h2>
               <FileList files={files} selected={file.id} onSelect={setSelected} />
             </section>
           );

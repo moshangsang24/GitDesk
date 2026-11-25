@@ -318,7 +318,7 @@ export function App() {
                 ) : !data ? (
                   <Notice title={`Loading ${repo.name}…`} kind="loading" />
                 ) : page === 'refs' ? (
-                  <RefsView key={repo.id} search={refsSearch} refs={data.refs ?? []} worktree={worktree} />
+                  <RefsView key={repo.id} search={refsSearch} refs={data.refs ?? []} worktree={worktree} worktrees={repo.worktrees} />
                 ) : page === 'releases' ? (
                   <ReleasesView key={repo.id} repoId={repo.id} refs={data.refs ?? []} shallowStamp={data.shallowStamp} worktree={worktree} draft={releaseDraft?.repoId === repo.id ? releaseDraft.ids : null} onClearDraft={() => setReleaseDraft(null)} />
                 ) : page === 'changes' ? (
@@ -327,7 +327,12 @@ export function App() {
                       <WorktreeSummary worktree={worktree} />
                       <LocalChanges key={worktree.id} worktree={worktree} snapshot={data} query={changesQuery} fileWidth={fileWidth} onResizeFiles={setFileWidth} />
                     </>
-                  ) : <ChangesView key={worktreeId} changes={data.changes} query={changesQuery} fileWidth={fileWidth} onResizeFiles={setFileWidth} />
+                  ) : (
+                    <>
+                      <WorktreeSummary worktree={worktree} />
+                      <ChangesView key={worktreeId} changes={data.changes} query={changesQuery} fileWidth={fileWidth} onResizeFiles={setFileWidth} />
+                    </>
+                  )
                 ) : history.phase === 'error' ? (
                   <Notice title="Could not read commit history" kind="error" onRetry={() => { void refresh(); }}>{history.message}</Notice>
                 ) : (

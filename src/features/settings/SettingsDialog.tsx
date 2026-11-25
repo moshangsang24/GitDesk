@@ -1,6 +1,6 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { useDisplayPreferences } from './preferences';
+import { accents, useDisplayPreferences } from './preferences';
 import type { Appearance } from './useAppearance';
 
 interface Props {
@@ -17,6 +17,8 @@ export function SettingsDialog({ open, onClose, showHash, setShowHash, appearanc
   const dialog = useRef<HTMLDialogElement>(null);
   const absoluteDates = useDisplayPreferences((state) => state.absoluteDates);
   const setAbsoluteDates = useDisplayPreferences((state) => state.setAbsoluteDates);
+  const accent = useDisplayPreferences((state) => state.accent);
+  const setAccent = useDisplayPreferences((state) => state.setAccent);
 
   useEffect(() => {
     const element = dialog.current;
@@ -44,6 +46,18 @@ export function SettingsDialog({ open, onClose, showHash, setShowHash, appearanc
             <option value="dark">Dark</option>
           </select>
         </label>
+        <fieldset className="settings-row accent-picker">
+          <legend>Accent color</legend>
+          <div className="accent-options">
+            {accents.map(({ id, label }) => (
+              <label key={id} className="accent-option" data-swatch={id} title={label}>
+                <input type="radio" name="accent" value={id} checked={accent === id} onChange={() => setAccent(id)} />
+                <span className="accent-swatch" aria-hidden="true" />
+                <span className="sr-only">{label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <label className="settings-row">
           <span>Always show commit dates</span>
           <input type="checkbox" checked={absoluteDates} onChange={(event) => setAbsoluteDates(event.target.checked)} />
