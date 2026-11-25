@@ -21,11 +21,11 @@ GitDesk 是 Orca、Codex、Claude Code 等开发工具的伴侣，而非另一�
 | [界面参考稿（SVG）](docs/gitdesk-mockup.svg) · [设计预览（PNG）](docs/GitDesk-UI-preview.png) | 使用虚构数据的界面设计稿 |
 | [M1 实际界面（PNG）](docs/GitDesk-M1-preview.png) | 浅色主题原型截图，1280 × 820 @2x |
 
-## 安装 v0.1.0
+## macOS 安装
 
-本地安装包为 `GitDesk_0.1.0_aarch64.dmg`，适用于 Apple Silicon Mac。在 Finder 打开 DMG，将 **GitDesk.app** 拖到 **Applications**，然后启动。应用使用临时签名（ad hoc），已在本机完成安装和启动验证。
+安装包适用于 Apple Silicon Mac。在 Finder 打开 DMG，将 **GitDesk.app** 拖到 **Applications**。下载入口见 [GitHub Releases](https://github.com/moshangsang24/GitDesk/releases)。
 
-从源码复现本地安装包，产物位于 `src-tauri/target/release/bundle/dmg/`。
+以下命令从源码构建本地安装包，使用临时签名（ad hoc）。产物位于 `src-tauri/target/release/bundle/dmg/`。
 
 ```bash
 CI=true pnpm tauri build --bundles app,dmg --config '{"bundle":{"active":true,"macOS":{"signingIdentity":"-"}}}'
