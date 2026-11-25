@@ -136,7 +136,7 @@ export interface Commit {
   authorTime: number; // Unix seconds
   shallowBoundary: boolean;
 }
-export type HistoryScope = 'all' | 'current' | 'local' | 'ref' | 'mine';
+export type HistoryScope = 'all' | 'current' | 'local' | 'ref' | 'mine' | 'releaseTargets';
 export interface HistoryRefVisibility {
   local: boolean;
   remote: boolean;
@@ -167,7 +167,8 @@ IPC command 名与输入保持明确、细粒度。所有路径型输入只用�
 | get_repository / list_worktrees | repoId | repository / worktrees |
 | get_repository_snapshot | repoId, requestId | repository, worktree statuses and refs. Concurrent requests share an unfinished read. |
 | list_refs | repoId, worktreeId | ref snapshot |
-| open_history | sessionId, repoId, worktreeId, scope, optional refName or authorFilter | frozen refs, matching branch names for My branches, HEAD, shallow stamp, first page |
+| open_history | sessionId, repoId, worktreeId, scope, optional refName or authorFilter | frozen refs, matching branch names for My branches or release comparison snapshot, HEAD, shallow stamp, first page |
+| compare_release_branches | repoId, worktreeId, expected comparison, summary or directional page request | count per target or bounded commit page |
 | list_commit_authors | repoId, requestId | unique author identities from up to 5,000 recent local and remote-tracking branch commits |
 | load_history_page | sessionId, sequence | next page, rejects stale or duplicate requests |
 | close_history | sessionId | cancel reads and release resources |
@@ -176,6 +177,7 @@ IPC command 名与输入保持明确、细粒度。所有路径型输入只用�
 | get_file_preview | repoId, worktreeId, commit or changes source, fileId, requestId | bounded structured patch for a verified file |
 | cancel_review | requestId | cancel snapshot, file or release reads |
 | get_release_overview / save_release_targets | repoId, target refs and expected version for save | repository release profile and tasks |
+| edit_release_links | repoId, expected task and target versions, stage, original OIDs, target OID, expected tip, add/remove | updated task revision and repository release overview |
 | save_release_task / delete_release_task | repoId, task ID, expected version, optional edited fields | local release task configuration |
 | release_candidates / evaluate_release / list_release_observations | repoId, requested range or commit set, task and target versions as applicable | candidate commits, current proof or saved observations |
 | list_operation_remotes | repository and worktree IDs | configured names |
@@ -240,6 +242,8 @@ Read 500 commits per page with one-record lookahead and a 4 MiB read limit. A se
 
 `mine` compares the frozen local and remote-tracking tips against a verified base ref. A bounded reverse topological walk visits parents first and propagates matches for the selected raw author name/email to descendant tips. The matching tips become roots for normal history paging. Shallow history and incomplete scans show an error. The identity and base branch are local per-repository view preferences.
 
+`releaseTargets` opens the graph from the selected worktree HEAD and the configured remote-tracking tips. Separate cancellable queries compute symmetric-difference counts and read 50 directional commits per page. Resolve the expected repository, worktree, profile revision, tip OIDs and shallow stamp before and after the read. Render only results for the active History session.
+
 ### 4.5 Commit and diff
 
 - Commit metadata: `git show -s --format=... <oid> --`, using fixed formats and bounded output. Preserve message, author/committer, full parent OIDs.
@@ -261,11 +265,11 @@ M3 将 `HistoryRefVisibility` 保存在 `RepoId` 对应的视图设置中，两�
 
 Filesystem watcher monitors selected worktree directory (excluding generated/cache paths where feasible), its git dir and shared common-dir changes. Debounce around 300–500 ms; events are invalidation hints, not truth. Worktree path may be deleted/replaced. Revalidate registration before writes. Use foreground status refresh on focus/manual action, low-frequency background repo status (e.g. every 30–60 s while focused, bounded and paused when hidden); no automatic network fetch v0.1. On watcher overflow or permission failure fallback to manual/low-frequency refresh. Snapshot reads can be cancelled. The frontend schedules a single follow-up read per repository when an invalidation or manual refresh arrives during a read. A silent recovery starts History if it has no session. File previews keep their current patch and scroll position during refresh. The selected file's revision and comparison base determine when a new patch is needed.
 
-Config v2 lives under the Tauri app config directory, with atomic file replacement. It stores workspace roots, registrations, repository exclusions, selection, optional Git path, release metadata and Fetch records by remote. Configuration headers are parsed before version-specific data. An unsupported version leaves the original file in place and makes settings read-only. Corrupt supported configurations are backed up before recovery. Appearance and repository view settings live in the local WebView.
+The config file lives under the Tauri app config directory, with atomic file replacement. It stores workspace roots, registrations, repository exclusions, selection, optional Git path, release metadata and Fetch records by remote. Configuration headers are parsed before version-specific data. An unsupported version leaves the original file in place and makes settings read-only. Corrupt supported configurations are backed up before recovery. Appearance and repository view settings live in the local WebView.
 
 当前 `workspaces.json` 保存授权目录、注册路径、可选 Git 路径和最后选中的仓库、worktree、页面。外观和工作区展开偏好保存在本机 WebView。选中 worktree 的变更事件约 425ms 合并一次，窗口可见时每 45 秒刷新当前仓库并轮询最多四个其他仓库。
 
-首次保存时将旧版 `workspaces.json` 迁移到 v2。迁移保留扫描根目录、手动添加及移除记录、Git 路径和现有选择。发布目标默认未配置，按逻辑仓库保存。任务修订和历史观察使用有界本地元数据并原子保存。选中的提交和比较基准按仓库及 worktree 保存，History 首屏包含该提交时恢复详情。
+首次保存时将旧版 `workspaces.json` 迁移到 v2。保存任务提交关联时提升到 v3，使旧版按配置头进入只读保护。任务关联记录原提交和替代提交 OID，并随任务修订和历史观察原子保存。发布目标默认未配置，按逻辑仓库保存。选中的提交和比较基准按仓库及 worktree 保存，History 首屏包含该提交时恢复详情。
 
 ## 6. Safe operations and concurrency
 
@@ -285,6 +289,8 @@ GitDesk serializes writes across all worktrees of a logical repository and retur
 Read-only status and working diff skip submodule working-file checks and disable configured clean filters. The write preflight checks initialized submodule worktrees individually with the same filter restrictions. Changes that may depend on a filter are flagged as uncertain.
 
 Authentication uses the existing trusted SSH agent and configured Git credential helper. Do not ask for/store tokens or passwords in v0.1. Set GIT_TERMINAL_PROMPT=0 for noninteractive background child, catch interactive authentication requirements and direct users to Terminal. Never embed secrets in args, error UI, config or logs. The executor classifies bounded Git diagnostics and returns fixed error messages with exit codes. The UI shows the operation target and the remote host with URL credentials and paths omitted. The session log retains up to 20 results per repository. Explicit Fetch can be cancelled, and interruption refreshes observed state after Git exits.
+
+Repository network settings are stored by RepoId. HTTP(S) operations inherit Git settings by default. Direct and custom proxy modes apply an invocation-scoped `remote.<name>.proxy` option. Custom endpoints are validated and contain no credentials. The operation confirmation includes the selected mode, and revalidation rejects a changed proxy setting before execution. SSH uses the configured SSH transport.
 
 ## 7. Permissions and platform
 

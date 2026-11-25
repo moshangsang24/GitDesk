@@ -1,4 +1,5 @@
 use super::{
+    comparison::Comparison,
     executor::{read_limited, Git, HistoryProcess, OUTPUT_LIMIT, READ_TIMEOUT},
     my_branches::{self, AuthorFilter},
 };
@@ -29,6 +30,7 @@ pub enum HistoryScope {
     Local,
     Ref,
     Mine,
+    ReleaseTargets,
 }
 
 pub struct HistoryInput {
@@ -36,6 +38,7 @@ pub struct HistoryInput {
     pub common_dir: PathBuf,
     pub head: Option<String>,
     pub refs: Vec<GitRef>,
+    pub comparison: Option<Comparison>,
 }
 
 impl HistoryInput {
@@ -46,7 +49,10 @@ impl HistoryInput {
         mine: Option<&BTreeSet<String>>,
     ) -> Result<Vec<String>> {
         let mut roots = Vec::new();
-        if matches!(scope, HistoryScope::Current | HistoryScope::All) {
+        if matches!(
+            scope,
+            HistoryScope::Current | HistoryScope::All | HistoryScope::ReleaseTargets
+        ) {
             roots.extend(self.head.iter().cloned());
         }
         match scope {
@@ -80,6 +86,12 @@ impl HistoryInput {
                         .map(|item| item.target_oid.clone()),
                 );
             }
+            HistoryScope::ReleaseTargets => roots.extend(
+                self.comparison
+                    .iter()
+                    .flat_map(|comparison| comparison.tips.iter().flatten())
+                    .cloned(),
+            ),
             HistoryScope::Current => {}
         }
         let mut seen = HashSet::new();
@@ -120,6 +132,8 @@ pub struct OpenHistory {
     pub shallow_stamp: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub my_branch_refs: Option<BTreeSet<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comparison: Option<Comparison>,
 }
 
 pub struct PageRequest {
@@ -210,6 +224,16 @@ pub async fn open(
     receiver: mpsc::Receiver<PageRequest>,
 ) -> Result<OpenHistory> {
     let stamp = shallow_stamp(&input.common_dir)?;
+    if input
+        .comparison
+        .as_ref()
+        .is_some_and(|comparison| comparison.shallow_stamp != stamp)
+    {
+        return Err(Failure::new(
+            "STALE",
+            "The shallow history boundary changed. Refresh history.",
+        ));
+    }
     let my_branch_refs = if matches!(scope, HistoryScope::Mine) {
         let filter = author_filter
             .ok_or_else(|| Failure::invalid("Choose a commit author and a base branch."))?;
@@ -254,6 +278,7 @@ pub async fn open(
         refs: input.refs,
         shallow_stamp: stamp,
         my_branch_refs,
+        comparison: input.comparison,
     })
 }
 

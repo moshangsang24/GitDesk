@@ -1,6 +1,11 @@
 import { X } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { GitRef, Repository } from '../../services/contracts';
+import type { ReleaseActions, ReleaseOverview } from '../../services/release';
+import { displayError, useGitDesk } from '../../stores/gitdesk';
+import { TargetForm } from '../releases/ReleaseForms';
 import { accents, useDisplayPreferences } from './preferences';
+import { RepositoryNetworkSettings } from './RepositoryNetworkSettings';
 import type { Appearance } from './useAppearance';
 
 interface Props {
@@ -11,14 +16,47 @@ interface Props {
   appearance: Appearance;
   local: boolean;
   setAppearance: (value: Appearance) => void;
+  repository?: Repository;
+  refs?: GitRef[];
 }
 
-export function SettingsDialog({ open, onClose, showHash, setShowHash, appearance, setAppearance, local }: Props) {
+function ReleaseTargetsSettings({ repository, refs, release }: {
+  repository: Repository; refs?: GitRef[]; release: ReleaseActions;
+}) {
+  const [overview, setOverview] = useState<ReleaseOverview | null>(null);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const releaseTargetsSaved = useGitDesk((state) => state.releaseTargetsSaved);
+  useEffect(() => {
+    let active = true;
+    void release.overview(repository.id).then(
+      (result) => { if (active) { setOverview(result); setError(''); } },
+      (failure: unknown) => { if (active) setError(displayError(failure)); },
+    );
+    return () => { active = false; };
+  }, [release, repository.id, attempt]);
+
+  return <section className="settings-release-targets" aria-labelledby="settings-targets-title">
+    <h3 id="settings-targets-title">Release branches · {repository.name}</h3>
+    {error ? <div role="alert">{error} <button className="control" onClick={() => { setError(''); setAttempt(attempt + 1); }}>Retry</button></div>
+      : overview && refs ? <TargetForm key={overview.targetRevision} release={release} repoId={repository.id} refs={refs} overview={overview} onSave={(result) => {
+        setOverview(result);
+        setSaved(true);
+        if (result.targetRevision !== overview.targetRevision) releaseTargetsSaved(repository.id, result.targetRevision);
+      }} /> : <p role="status" className="text-muted">Reading release branches…</p>}
+    {saved && <p role="status" className="text-muted">Targets saved for History and Releases.</p>}
+  </section>;
+}
+
+export function SettingsDialog({ open, onClose, showHash, setShowHash, appearance, setAppearance, local, repository, refs }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const absoluteDates = useDisplayPreferences((state) => state.absoluteDates);
   const setAbsoluteDates = useDisplayPreferences((state) => state.setAbsoluteDates);
   const accent = useDisplayPreferences((state) => state.accent);
   const setAccent = useDisplayPreferences((state) => state.setAccent);
+  const release = useGitDesk((state) => state.service.release);
+  const operations = useGitDesk((state) => state.service.operations);
 
   useEffect(() => {
     const element = dialog.current;
@@ -69,6 +107,10 @@ export function SettingsDialog({ open, onClose, showHash, setShowHash, appearanc
         <div className="settings-row">
           <span>Data source</span><span className="settings-value">{local ? 'Local Git' : 'Mock repositories'}</span>
         </div>
+        {open && operations && repository && <RepositoryNetworkSettings key={`network:${repository.id}`} repository={repository} operations={operations} />}
+        {open && release && (repository
+          ? <ReleaseTargetsSettings key={`release-targets:${repository.id}`} repository={repository} refs={refs} release={release} />
+          : <p className="text-muted settings-release-targets">Select a repository to configure its release branches.</p>)}
         <div className="settings-shortcuts">
           <h3 className="section-caption">Keyboard shortcuts</h3>
           <dl>

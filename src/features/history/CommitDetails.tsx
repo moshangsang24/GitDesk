@@ -2,6 +2,7 @@ import { Check, ChevronDown, ChevronRight, Copy, X } from 'lucide-react';
 import { useState } from 'react';
 import { Notice } from '../../components/ui/Notice';
 import { ResizeHandle } from '../../components/ui/ResizeHandle';
+import { copyText } from '../../services/context-menu';
 import { useGitDesk } from '../../stores/gitdesk';
 import { FilePreview } from '../changes/FilePreview';
 import { FileList } from '../changes/FileList';
@@ -27,7 +28,7 @@ export function CommitDetails({ height, fileWidth, onResizeFiles, onClose }: Pro
 
   async function copyHash() {
     try {
-      await navigator.clipboard.writeText(commit.oid);
+      await copyText(commit.oid);
       setCopyState('copied');
     } catch {
       setCopyState('error');

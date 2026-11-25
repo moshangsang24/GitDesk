@@ -9,8 +9,9 @@ mod watch;
 
 use crate::{
     git::{
+        comparison::{self, Comparison},
         executor::Git,
-        history::{self, HistoryPage, HistoryScope, HistorySessions, OpenHistory},
+        history::{self, HistoryInput, HistoryPage, HistoryScope, HistorySessions, OpenHistory},
         my_branches::{self, AuthorFilter, CommitAuthor},
         repository::{self, Location},
     },
@@ -447,32 +448,98 @@ pub async fn open_history(
     let (cancel, receiver) = state.history.start(&session_id)?;
     let result = async {
         let git = state.git(&cancel).await?;
-        let mut failure = Failure::new("PATH_UNAVAILABLE", "The repository is unavailable.");
-        for location in &locations {
-            match repository::history_input(git, location, &worktree_id, &cancel).await {
-                Ok(input) => {
-                    return history::open(
-                        git,
-                        input,
-                        scope,
-                        ref_name.as_deref(),
-                        author_filter.as_ref(),
-                        cancel,
-                        receiver,
-                    )
-                    .await
-                }
-                Err(error) if error.code == "CANCELLED" => return Err(error),
-                Err(error) => failure = error,
-            }
+        let mut input = load_history_input(git, &locations, &worktree_id, &cancel).await?;
+        if matches!(scope, HistoryScope::ReleaseTargets) {
+            input.comparison = Some(release_comparison(&state, &repo_id, &input)?);
         }
-        Err(failure)
+        history::open(
+            git,
+            input,
+            scope,
+            ref_name.as_deref(),
+            author_filter.as_ref(),
+            cancel,
+            receiver,
+        )
+        .await
     }
     .await;
     if !result.as_ref().is_ok_and(|history| history.page.has_more) {
         state.history.close(&session_id);
     }
     result
+}
+
+async fn load_history_input(
+    git: &Git,
+    locations: &[Location],
+    worktree_id: &str,
+    cancel: &CancellationToken,
+) -> Result<HistoryInput> {
+    let mut failure = Failure::new("PATH_UNAVAILABLE", "The repository is unavailable.");
+    for location in locations {
+        match repository::history_input(git, location, worktree_id, cancel).await {
+            Ok(input) => return Ok(input),
+            Err(error) if error.code == "CANCELLED" => return Err(error),
+            Err(error) => failure = error,
+        }
+    }
+    Err(failure)
+}
+
+fn release_comparison(
+    state: &WorkspaceState,
+    repo_id: &str,
+    input: &HistoryInput,
+) -> Result<Comparison> {
+    let (revision, targets) = state
+        .configuration
+        .lock()
+        .unwrap()
+        .value
+        .releases
+        .get(repo_id)
+        .map(|data| (data.target_revision, data.targets.clone()))
+        .unwrap_or_default();
+    Ok(Comparison::new(
+        input,
+        revision,
+        targets,
+        history::shallow_stamp(&input.common_dir)?,
+    ))
+}
+
+#[tauri::command]
+pub async fn compare_release_branches(
+    state: State<'_, WorkspaceState>,
+    repo_id: String,
+    worktree_id: String,
+    expected: Comparison,
+    query: comparison::Query,
+    request_id: String,
+) -> Result<comparison::Answer> {
+    let (locations, _) = state.locations(&repo_id)?;
+    let request = review::Request::start(&state, request_id)?;
+    let git = state.git(&request.token).await?;
+    let check_snapshot = || async {
+        let input = load_history_input(git, &locations, &worktree_id, &request.token).await?;
+        if release_comparison(&state, &repo_id, &input)? != expected {
+            return Err(Failure::new(
+                "STALE",
+                "The comparison changed. Refresh History to retry.",
+            ));
+        }
+        Ok(input.path)
+    };
+    let path = check_snapshot().await?;
+    let answer = comparison::read(git, &path, &expected, query, &request.token).await?;
+    if check_snapshot().await? != path {
+        return Err(Failure::new(
+            "STALE",
+            "The worktree location changed. Refresh History to retry.",
+        ));
+    }
+    Ok(answer)
 }
 
 #[tauri::command]

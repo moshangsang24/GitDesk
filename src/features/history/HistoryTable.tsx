@@ -1,4 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, MouseEvent, RefObject } from 'react';
 import { ResizeHandle } from '../../components/ui/ResizeHandle';
@@ -18,6 +19,7 @@ import { evidenceLabels, formatObservation } from '../releases/stage';
 import { Highlight } from './history-search';
 
 const headerHeight = 26;
+const minimumSubjectWidth = 190;
 export function formatCommitDate(timestamp: number, detailed = false) {
   return detailed ? formatFullDate(timestamp) : formatShortDate(timestamp);
 }
@@ -101,13 +103,14 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
   const absoluteDates = useDisplayPreferences((state) => state.absoluteDates);
   const { commits, graphRows } = data;
   const [widths, setWidths] = useState<Partial<Record<keyof typeof columnLimits, number>>>({});
+  const [graphExpanded, setGraphExpanded] = useState(false);
   const columns = {
     Author: widths.Author ?? Math.round(Math.max(104, Math.min(140, viewportWidth * 0.1))),
     Date: widths.Date ?? (viewportWidth <= 780 ? 74 : 80),
     Hash: showHash ? widths.Hash ?? (viewportWidth <= 780 ? 66 : 73) : 0,
   };
 
-  const graphWidth = useMemo(() => {
+  const fullGraphWidth = useMemo(() => {
     let widest = 0;
     for (const row of graphRows) {
       widest = Math.max(widest, row.lane);
@@ -116,6 +119,8 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
     }
     return Math.max(graphGeometry.minWidth, 2 * graphGeometry.inset + graphGeometry.spacing * widest);
   }, [graphRows]);
+  const compactGraphWidth = Math.min(fullGraphWidth, viewportWidth < 850 ? 118 : 136);
+  const graphWidth = graphExpanded ? fullGraphWidth : compactGraphWidth;
 
   // TanStack Virtual's imperative instance is used directly for keyboard navigation.
   const virtualizer = useVirtualizer({
@@ -134,7 +139,7 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
   const bucketEnd = lastVisible < 0 ? 0 : Math.min(firstBucket + 200, Math.ceil((lastVisible + 1) / 32) * 32);
   const releaseResult = useHistoryEvidence(!!releaseStatus, releaseStatus ? commits.slice(firstBucket, bucketEnd).map(({ oid }) => oid) : [], repoId);
   const compactRefs = viewportWidth < 850;
-  const refWidth = compactRefs ? 112 : 162;
+  const refWidth = compactRefs ? 104 : 138;
 
   useEffect(() => {
     if (selectedIndex >= 0) virtualizer.scrollToIndex(selectedIndex, { align: 'auto' });
@@ -213,8 +218,8 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
       ref={gridRef}
       className="history-grid"
       style={{
-        '--history-columns': `${tracking ? '28px ' : ''}${refWidth}px ${graphWidth}px minmax(130px, 1fr) ${columns.Author}px ${columns.Date}px ${showHash ? `${columns.Hash}px ` : ''}${releaseStatus ? 'repeat(3, 74px) ' : ''}max(0px, calc(100% - var(--history-data-width)))`,
-        '--history-min-width': `${refWidth + graphWidth + 130 + columns.Author + columns.Date + columns.Hash + (releaseStatus ? 222 : 0) + (tracking ? 28 : 0)}px`,
+        '--history-columns': `${tracking ? '28px ' : ''}${refWidth}px ${graphWidth}px minmax(${minimumSubjectWidth}px, 1fr) ${columns.Author}px ${columns.Date}px ${showHash ? `${columns.Hash}px ` : ''}${releaseStatus ? 'repeat(3, 74px) ' : ''}max(0px, calc(100% - var(--history-data-width)))`,
+        '--history-min-width': `${refWidth + graphWidth + minimumSubjectWidth + columns.Author + columns.Date + columns.Hash + (releaseStatus ? 222 : 0) + (tracking ? 28 : 0)}px`,
       } as CSSProperties}
       role="grid"
       tabIndex={0}
@@ -228,7 +233,14 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
       <div className="history-header history-columns" role="row" aria-rowindex={1}>
         {tracking && <span role="columnheader" aria-label="Track commit" />}
         <span role="columnheader">Branch / Tag</span>
-        <span role="columnheader">Graph</span>
+        <div role="columnheader" className="graph-heading">
+          Graph
+          {fullGraphWidth > compactGraphWidth && <button type="button" className="icon-button graph-expand"
+            aria-label={graphExpanded ? 'Show compact graph' : 'Show full graph'} aria-expanded={graphExpanded}
+            title={graphExpanded ? 'Show compact graph' : 'Show all graph lanes'} onClick={() => setGraphExpanded(!graphExpanded)}>
+            {graphExpanded ? <Minimize2 size={12} aria-hidden="true" /> : <Maximize2 size={12} aria-hidden="true" />}
+          </button>}
+        </div>
         <span role="columnheader">Commit message</span>
         {(Object.keys(columns) as Array<keyof typeof columns>).map((column) => columns[column] > 0 && (
           <div key={column} role="columnheader" aria-label={column} className="resizable-column">
@@ -269,7 +281,7 @@ export function HistoryTable({ data, gridRef, query, matches, showHash, viewport
               {tracking && <span className="history-track-cell" role="gridcell"><input type="checkbox" checked={tracking.ids.includes(commit.oid)} aria-label={`Track ${commit.subject}`} onClick={(event) => event.stopPropagation()} onChange={() => tracking.onToggle(commit.oid)} /></span>}
               <div role="gridcell" className="history-ref-cell"><RefBadges refs={refs} limit={compactRefs ? 1 : 2} color={graphPalette[graph.colorId % graphPalette.length]} onMenu={(label, event) => showRefMenu(commit, label, event)} /></div>
               <span role="gridcell" className="graph-column" title={graph.nodeKind === 'boundary' ? 'Shallow history boundary' : graph.nodeKind === 'normal' ? undefined : `${graph.nodeKind} commit`}>
-                <GraphCell row={graph} width={graphWidth} selected={selectedOid === commit.oid} />
+                <GraphCell row={graph} width={fullGraphWidth} selected={selectedOid === commit.oid} />
                 {graph.nodeKind !== 'normal' && (
                   <span className="sr-only">{graph.nodeKind === 'merge' ? `Merge, ${commit.parents.length} parents` : graph.nodeKind === 'boundary' ? 'Shallow history boundary' : 'Root commit'}</span>
                 )}

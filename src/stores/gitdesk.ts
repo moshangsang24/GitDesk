@@ -2,6 +2,7 @@ import { isTauri } from '@tauri-apps/api/core';
 import { create } from 'zustand';
 import { HistoryLayout } from '../core/graph/layout';
 import { labelsByOid } from '../core/graph/refs';
+import type { ReleaseComparison } from '../services/comparison';
 import type {
   AuthorFilter, Commit, CommitDetail, GitRef, GitService, HistoryPage, HistoryScope, Oid, RefLabel, RefVisibility, Repository, RepositoryPage,
   RepositoryView, ScanProgress, WorkspaceCatalog, WorkspaceSelection,
@@ -41,6 +42,8 @@ export interface HistoryData extends Pick<RepositoryView, 'commits' | 'graphRows
   paging: boolean;
   stale: boolean;
   pageMessage: string | null;
+  comparison?: ReleaseComparison;
+  comparisonObservedAt?: number;
 }
 
 interface HistorySession {
@@ -75,6 +78,8 @@ interface GitDeskState {
   service: GitService;
   pendingOperations: Record<string, OperationInput | undefined>;
   operationLog: Record<string, OperationLogEntry[] | undefined>;
+  releaseTargetVersions: Record<string, number | undefined>;
+  releaseTargetsSaved: (repoId: string, revision: number) => void;
   runOperation: (input: OperationInput, confirmation: OperationConfirmation) => Promise<void>;
   local: boolean;
   catalog: WorkspaceCatalog;
@@ -240,18 +245,21 @@ export function createGitDeskStore(service: GitService) {
       if (!preview) set({ history: { phase: 'loading' } });
       try {
         const selectedAuthor = scope === 'mine' ? authorFilter ?? undefined : undefined;
-        const { page: first, refs, head, shallowStamp, myBranchRefs } = await historyActions.open(current.id, repoId, worktreeId, scope, focusedRef, selectedAuthor);
+        const { page: first, refs, head, shallowStamp, myBranchRefs, comparison } = await historyActions.open(current.id, repoId, worktreeId, scope, focusedRef, selectedAuthor);
         if (session !== current) {
           void historyActions.close(current.id).catch(() => undefined);
           return;
         }
         const matching = myBranchRefs && new Set(myBranchRefs);
-        const displayRefs = matching ? refs.filter((ref) => ref.kind === 'tag' || matching.has(ref.fullName)) : refs;
+        const displayRefs = comparison
+          ? refs.filter((ref) => ref.kind === 'remote' && !ref.symbolicTarget && comparison.targets.includes(ref.fullName))
+          : matching ? refs.filter((ref) => ref.kind === 'tag' || matching.has(ref.fullName)) : refs;
         current.labels = labelsByOid(displayRefs, head);
         const data = appendHistory(current, first, {
           sessionId: current.id, tableKey: preview?.tableKey ?? current.id, refs, displayRefs, head, shallowStamp, commits: [], graphRows: [], hasMore: false, paging: false, stale: false, pageMessage: null,
+          comparison, comparisonObservedAt: comparison ? Date.now() : undefined,
         });
-        remember(recentHistory, cacheKey, data);
+        if (!comparison) remember(recentHistory, cacheKey, data);
         const remembered = reopen && service.review ? readInspection(repoId, worktreeId) : null;
         const recorded = data.commits.find(({ oid }) => oid === remembered?.oid);
         const selectedOid = preview ? get().selectedCommitOid ?? preferredOid : preferredOid;
@@ -279,11 +287,19 @@ export function createGitDeskStore(service: GitService) {
       const refs = snapshot.refs ?? [];
       const tree = snapshot.repository?.worktrees.find(({ id }) => id === worktreeId);
       const headChanged = tree && tree.head !== history.data.head;
-      const refsChanged = refs.length !== history.data.refs.length || refs.some((ref, index) => {
+      const comparison = history.data.comparison;
+      const refsChanged = comparison
+        ? comparison.targets.some((target, index) => target !== null && (refs.find((ref) => ref.kind === 'remote' && !ref.symbolicTarget && ref.fullName === target)?.targetOid ?? null) !== comparison.tips[index])
+        : refs.length !== history.data.refs.length || refs.some((ref, index) => {
         const before = history.data.refs[index];
         return ref.fullName !== before.fullName || ref.targetOid !== before.targetOid || ref.symbolicTarget !== before.symbolicTarget;
       });
       if (!headChanged && !refsChanged && (snapshot.shallowStamp ?? null) === history.data.shallowStamp) return;
+      if (comparison) {
+        clearInspection();
+        void startHistory();
+        return;
+      }
       stopHistory();
       set({ history: { phase: 'ready', data: { ...history.data, stale: true, hasMore: false, paging: false, pageMessage: 'Repository history changed. Refresh to see the latest history.' } } });
     }
@@ -567,6 +583,15 @@ export function createGitDeskStore(service: GitService) {
 
       pendingOperations: {},
       operationLog: {},
+      releaseTargetVersions: {},
+      releaseTargetsSaved(repoId, revision) {
+        set((state) => ({ releaseTargetVersions: { ...state.releaseTargetVersions, [repoId]: revision } }));
+        const current = get();
+        if (current.repoId === repoId && current.scope === 'releaseTargets' && !current.viewRefreshing) {
+          clearInspection();
+          void startHistory();
+        }
+      },
 
       async runOperation(input, confirmation) {
         if (!service.operations || get().pendingOperations[input.repoId]) return;
@@ -723,6 +748,7 @@ export function createGitDeskStore(service: GitService) {
         const nextRef = scope === 'ref' ? refName ?? focusedRef : null;
         if (scope === 'ref' && !nextRef) return;
         if (scope === 'mine' && (!historyActions || !authorFilter)) return;
+        if (scope === 'releaseTargets' && !historyActions?.compareRelease) return;
         if (scope === activeScope && nextRef === focusedRef) return;
         if (native) clearInspection();
         set({ scope, focusedRef: nextRef });

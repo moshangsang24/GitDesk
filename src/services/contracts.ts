@@ -1,9 +1,10 @@
 import type { GraphRow } from '../core/graph/types';
+import type { ComparisonAnswer, ComparisonQuery, ReleaseComparison } from './comparison';
 import type { OperationActions } from './operations';
 import type { ReleaseActions } from './release';
 
 export type Oid = string;
-export type HistoryScope = 'all' | 'current' | 'local' | 'ref' | 'mine';
+export type HistoryScope = 'all' | 'current' | 'local' | 'ref' | 'mine' | 'releaseTargets';
 
 export interface CommitAuthor {
   name: string;
@@ -135,11 +136,13 @@ export interface OpenHistory {
   refs: GitRef[];
   shallowStamp: string | null;
   myBranchRefs?: string[];
+  comparison?: ReleaseComparison;
 }
 
 export interface HistoryActions {
   open(sessionId: string, repoId: string, worktreeId: string, scope: HistoryScope, refName: string | null, authorFilter?: AuthorFilter): Promise<OpenHistory>;
   listAuthors?(repoId: string, signal: AbortSignal): Promise<CommitAuthor[]>;
+  compareRelease?(repoId: string, worktreeId: string, expected: ReleaseComparison, query: ComparisonQuery, signal: AbortSignal): Promise<ComparisonAnswer>;
   loadPage(sessionId: string, sequence: number): Promise<HistoryPage>;
   close(sessionId: string): Promise<void>;
 }

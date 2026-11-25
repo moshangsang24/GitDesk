@@ -129,7 +129,7 @@ Default dark palette: purple #BC7CE9, orange #E5AA65, cyan #59C3D0, blue #7DA8EF
 
 Row height H = 28 px, lane spacing S = 14 px, left inset P = 12 px, node radius about 4 px. The node center is `(P + lane*S, H/2)`. Each SVG uses the shared graph width and viewBox `0 0 width H`. Through segments run from y=0 to y=H, incoming segments reach the node center, and parent edges end at the destination lane at y=H. Same-lane edges are straight and changes of lane use cubic Beziers. Draw through lines, parent edges and then the node. Merge uses a ring with an inner dot, regular commits use solid dots, root uses a square and shallow boundaries use a triangle. Incoming and outgoing meet at row boundaries.
 
-Graph column width = max(minWidth, 2P + (maxLaneCount-1)*S). Shared column width across all rendered rows. Use horizontal scroll for wide histories; do not shrink lane spacing to zero. Optionally freeze a reasonable graph/message viewport, but preserve scrollability and labels. Merge node and branch labels accessible via semantic row text (e.g. “merge, 2 parents”), not only color.
+Full graph width = max(minWidth, 2P + (maxLaneCount-1)*S). Every rendered row keeps that SVG width and coordinate system. The compact column clips the view at the right edge when needed. The header's expand button exposes every lane, with horizontal scrolling for very wide graphs. Expanding, collapsing, or resizing leaves node geometry and lane spacing intact. Merge nodes and branch labels are exposed through semantic row text such as “merge, 2 parents”.
 
 ## 6. Pagination and history consistency
 

@@ -4,11 +4,12 @@ import { displayError, useGitDesk } from '../../stores/gitdesk';
 
 export function useHistoryEvidence(enabled: boolean, oids: string[], repoId: string) {
   const release = useGitDesk((state) => state.service.release);
+  const targetRevision = useGitDesk((state) => state.releaseTargetVersions[repoId]);
   const refs = useGitDesk((state) => state.view.phase === 'ready' ? state.view.data.refs : undefined);
   const shallow = useGitDesk((state) => state.view.phase === 'ready' ? state.view.data.shallowStamp : null);
   const tips = useMemo(() => refs?.filter((ref) => ref.kind === 'remote').map(({ fullName, targetOid }) => `${fullName}=${targetOid}`).join('\n') ?? '', [refs]);
   const key = oids.join(' ');
-  const request = useMemo(() => ({ repoId, key, tips, shallow, enabled }), [repoId, key, tips, shallow, enabled]);
+  const request = useMemo(() => ({ repoId, key, tips, shallow, enabled, targetRevision }), [repoId, key, tips, shallow, enabled, targetRevision]);
   const [result, setResult] = useState<{ request: object; value?: ReleaseEvaluation; error?: string } | null>(null);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { isTauri } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 import { LogicalPosition } from '@tauri-apps/api/dpi';
 import { Menu } from '@tauri-apps/api/menu';
 import { create } from 'zustand';
@@ -69,11 +69,15 @@ export function requestConfirmation(options: Omit<Confirmation, 'resolve'>): Pro
 }
 
 export async function copyText(text: string) {
+  if (isTauri()) {
+    await invoke('write_clipboard_text', { text });
+    return;
+  }
   try {
     await navigator.clipboard.writeText(text);
     return;
   } catch {
-    // WKWebView may reject the async API outside a direct user gesture; fall back below.
+    // Browser previews may lack clipboard permissions or the async Clipboard API.
   }
   const field = document.createElement('textarea');
   field.value = text;
@@ -105,7 +109,7 @@ async function popupNative(entries: MenuEntry[], x: number, y: number) {
     items: entries.map((entry) => entry.kind === 'separator'
       ? { item: 'Separator' as const }
       : {
-        id: entry.id,
+        // Let Tauri assign each popup its own item IDs. Closing an old popup removes its handlers by ID.
         text: entry.label,
         enabled: !entry.disabled,
         accelerator: entry.shortcut ? accelerators[entry.shortcut] : undefined,

@@ -21,6 +21,7 @@ const releaseService: ReleaseActions = {
   overview: (repoId) => invoke('get_release_overview', { repoId }),
   saveTargets: (repoId, targets, revision, signal) => reviewRequest('save_release_targets', { repoId, targets, revision }, signal),
   saveTask: (repoId, edit, signal) => reviewRequest('save_release_task', { repoId, edit }, signal),
+  editLinks: (repoId, edit, signal) => reviewRequest('edit_release_links', { repoId, edit }, signal),
   deleteTask: (repoId, taskId, revision) => invoke('delete_release_task', { repoId, taskId, revision }),
   observations: (repoId, taskId) => invoke('list_release_observations', { repoId, taskId }),
   candidates: (repoId, baseOid, headOid, signal) => reviewRequest('release_candidates', { repoId, baseOid, headOid }, signal),
@@ -35,6 +36,8 @@ export const tauriGitService: GitService = {
     execute: (id) => invoke('execute_git_operation', { id }),
     cancel: (id) => invoke('cancel_git_operation', { id }),
     fetchActivity: (repoId) => invoke('get_fetch_activity', { repoId }),
+    getProxy: (repoId) => invoke('get_repository_proxy', { repoId }),
+    saveProxy: (repoId, proxy) => invoke('save_repository_proxy', { repoId, proxy }),
   },
 
   getCatalog: () => ({ workspaces: [], repositories: {} }),
@@ -57,6 +60,7 @@ export const tauriGitService: GitService = {
   history: {
     open: (sessionId, repoId, worktreeId, scope, refName, authorFilter) => invoke('open_history', { sessionId, repoId, worktreeId, scope, refName, authorFilter }),
     listAuthors: (repoId, signal) => reviewRequest('list_commit_authors', { repoId }, signal),
+    compareRelease: (repoId, worktreeId, expected, query, signal) => reviewRequest('compare_release_branches', { repoId, worktreeId, expected, query }, signal),
     loadPage: (sessionId, sequence) => invoke('load_history_page', { sessionId, sequence }),
     close: (sessionId) => invoke('close_history', { sessionId }),
   },

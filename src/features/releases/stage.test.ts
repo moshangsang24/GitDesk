@@ -24,6 +24,12 @@ describe('release stage summary', () => {
     expect(summarizeStage({ ...stage(), state: 'missing' }, 1).label).toBe('Ref missing');
     expect(summarizeStage(undefined, 1).label).toBe('Calculating…');
   });
+
+  it('counts verified equivalents once and retains the manual provenance', () => {
+    const snapshot = stage('included', 'included', 'notContained');
+    snapshot.evidence[1].matchedOid = 'a'.repeat(40);
+    expect(summarizeStage(snapshot, 3)).toMatchObject({ label: 'Partial', included: 2, linked: 1 });
+  });
 });
 
 describe('Fetch mapping coverage', () => {

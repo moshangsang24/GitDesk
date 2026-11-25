@@ -13,6 +13,7 @@ import { LocalChanges } from '../features/changes/LocalChanges';
 import { CommitDetails } from '../features/history/CommitDetails';
 import { HistoryRefs } from '../features/history/HistoryRefs';
 import { HistoryTable } from '../features/history/HistoryTable';
+import { ReleaseComparisonBar } from '../features/history/ReleaseComparisonBar';
 import { matchesCommit, searchCommits } from '../features/history/history-search';
 import { ReleasesView } from '../features/releases/ReleasesView';
 import { SettingsDialog } from '../features/settings/SettingsDialog';
@@ -69,6 +70,7 @@ export function App() {
   const closeDetail = useGitDesk((state) => state.closeDetail);
   const worktree = repo?.worktrees.find(({ id }) => id === worktreeId) ?? repo?.worktrees[0];
   const hasRelease = useGitDesk((state) => !!state.service.release);
+  const canCompareRelease = useGitDesk((state) => !!state.service.history?.compareRelease);
   const hasAuthorPicker = useGitDesk((state) => !!state.service.history?.listAuthors);
   const pages = local ? [tabs[0], { id: 'refs' as const, label: 'Branches' }, ...tabs.slice(1)] : [...tabs];
   if (hasRelease) pages.push({ id: 'releases', label: 'Releases' });
@@ -78,6 +80,7 @@ export function App() {
   const historySearch = useRef<HTMLInputElement>(null);
   const changesSearch = useRef<HTMLInputElement>(null);
   const historyGrid = useRef<HTMLDivElement>(null);
+  const shell = useRef<HTMLDivElement>(null);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarSearchOpen, setSidebarSearchOpen] = useState(false);
@@ -97,7 +100,7 @@ export function App() {
   const [releaseColumns, setReleaseColumns] = useState<Record<string, boolean>>({});
 
   const repositoryWidth = windowSize.width - (sidebarCollapsed ? 0 : sidebarWidth + 6);
-  const showRefs = refPanelOverride ?? repositoryWidth >= 950;
+  const showRefs = refPanelOverride ?? repositoryWidth >= 1050;
   const refsWidth = Math.max(146, Math.min(196, windowSize.width * 0.14));
   const historyWidth = repositoryWidth - (showRefs ? refsWidth : 0);
   const data = view.phase === 'ready' ? view.data : null;
@@ -120,9 +123,18 @@ export function App() {
   }, [initialize, startLiveUpdates]);
 
   useEffect(() => {
-    function update() { setWindowSize({ width: window.innerWidth, height: window.innerHeight }); }
+    const element = shell.current;
+    function update() {
+      const bounds = element?.getBoundingClientRect();
+      const width = bounds?.width || window.innerWidth;
+      const height = bounds?.height || window.innerHeight;
+      setWindowSize((previous) => previous.width === width && previous.height === height ? previous : { width, height });
+    }
+    update();
+    const observer = element && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    if (observer && element) observer.observe(element);
     window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', update); };
   }, []);
 
   const findRepository = useCallback(() => {
@@ -205,7 +217,7 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" ref={shell}>
       <TitleBar native={local} sidebarCollapsed={sidebarCollapsed} onOpenSidebar={() => setSidebarCollapsed(false)} onSearch={findRepository} />
       <div className="app-content">
         {!sidebarCollapsed && (
@@ -273,6 +285,7 @@ export function App() {
                       <option value="current">Current branch</option>
                       <option value="local">Local branches</option>
                       {hasAuthorPicker && <option value="mine">My branches</option>}
+                      {canCompareRelease && <option value="releaseTargets">{repositoryWidth < 800 ? 'Release targets' : 'Compare release targets'}</option>}
                       {scope === 'ref' && <option value="ref">Focused branch</option>}
                     </select>
                     {scope === 'mine' && authorFilter && (
@@ -324,7 +337,7 @@ export function App() {
                 ) : page === 'refs' ? (
                   <RefsView key={repo.id} search={refsSearch} refs={data.refs ?? []} worktree={worktree} worktrees={repo.worktrees} />
                 ) : page === 'releases' ? (
-                  viewRefreshing ? <Notice title="Refreshing repository…" kind="loading" /> : <ReleasesView key={repo.id} repoId={repo.id} refs={data.refs ?? []} shallowStamp={data.shallowStamp} worktree={worktree} draft={releaseDraft?.repoId === repo.id ? releaseDraft.ids : null} onClearDraft={() => setReleaseDraft(null)} />
+                  viewRefreshing ? <Notice title="Refreshing repository…" kind="loading" /> : <ReleasesView key={repo.id} repoId={repo.id} refs={data.refs ?? []} shallowStamp={data.shallowStamp} worktree={worktree} draft={releaseDraft?.repoId === repo.id ? releaseDraft.ids : null} onClearDraft={() => setReleaseDraft(null)} onConfigure={() => setSettingsOpen(true)} />
                 ) : page === 'changes' ? (
                   local ? (
                     <>
@@ -343,6 +356,14 @@ export function App() {
                   <div className="history-workspace">
                     {showRefs && <HistoryRefs key={repo.id} refs={localHistory?.displayRefs ?? (scope === 'mine' ? [] : historyData?.refs ?? data.refs ?? [])} worktrees={repo.worktrees} worktreeId={worktreeId} />}
                     <div className="history-main">
+                      {localHistory?.comparison && <ReleaseComparisonBar
+                        key={`release-comparison:${localHistory.sessionId}`}
+                        comparison={localHistory.comparison}
+                        observedAt={localHistory.comparisonObservedAt}
+                        branch={worktree.status.branchNameUnavailable ? 'Branch name unavailable' : worktree.branch ?? (worktree.bare ? 'Bare HEAD' : null)}
+                        onSettings={() => setSettingsOpen(true)}
+                        onRefresh={() => { void refresh(); }}
+                      />}
                       {!historyData ? <Notice title="Loading commits…" kind="loading" /> : historyData.commits.length ? (
                         <HistoryTable key={localHistory?.tableKey ?? `${worktreeId}-${scope}-${focusedRef}`} data={historyData} gridRef={historyGrid} query={historyQuery} matches={matchIds} showHash={showHash} viewportWidth={historyWidth} hasMore={localHistory?.hasMore} paging={localHistory?.paging} releaseStatus={local && showReleaseColumns && !localHistory?.cacheStatus} tracking={activeTracking ? { ids: activeTracking.ids, onToggle: (oid) => setTracking({ ...activeTracking, ids: activeTracking.ids.includes(oid) ? activeTracking.ids.filter((id) => id !== oid) : activeTracking.ids.length < 200 ? [...activeTracking.ids, oid] : activeTracking.ids }) } : undefined} />
                       ) : <Notice title={scope === 'mine' ? 'No branches match this author' : scope === 'all' ? 'No commits yet' : 'No commits in this history scope'} />}
@@ -389,7 +410,7 @@ export function App() {
         onClose={() => setAuthorPickerRepo(null)}
         onApply={(filter) => { setAuthorPickerRepo(null); void showMyBranches(filter); }}
       />}
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} showHash={showHash} setShowHash={setShowHash} appearance={appearance} setAppearance={setAppearance} local={local} />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} showHash={showHash} setShowHash={setShowHash} appearance={appearance} setAppearance={setAppearance} local={local} repository={repo} refs={data?.refs} />
     </div>
   );
 }

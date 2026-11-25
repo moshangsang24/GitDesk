@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { shortRef } from '../../core/graph/refs';
 import type { GitRef, Repository, Worktree } from '../../services/contracts';
-import { operationLabels, type OperationAction, type OperationConfirmation, type OperationInput, type OperationActions } from '../../services/operations';
+import { operationLabels, proxyLabels, type OperationAction, type OperationConfirmation, type OperationInput, type OperationActions } from '../../services/operations';
 import { displayError, useGitDesk } from '../../stores/gitdesk';
 
 export type OperationPanel = 'branches' | 'fetch' | 'pull' | 'push' | 'log';
@@ -125,6 +125,7 @@ export function OperationDialog({ operations, panel, repo, worktree, refs, onClo
                 <dt>Worktree</dt><dd>{confirmation.data.path}</dd>
                 <dt>Target</dt><dd>{confirmation.data.remote && confirmation.input.action.kind !== 'fetch' ? `${confirmation.data.remote} · ` : ''}{confirmation.data.trackedRef || confirmation.input.action.kind === 'push' ? shortRef(confirmation.data.target) : confirmation.data.target}</dd>
                 {confirmation.data.remoteHost && <><dt>Remote host</dt><dd>{confirmation.data.remoteHost}</dd></>}
+                {confirmation.data.proxyMode && <><dt>HTTP proxy</dt><dd>{proxyLabels[confirmation.data.proxyMode]}</dd></>}
                 {confirmation.data.trackedRef && <><dt>Tracking ref</dt><dd>{shortRef(confirmation.data.trackedRef)}</dd></>}
                 {confirmation.input.head.branch && confirmation.input.action.kind !== 'fetch' && (
                   <><dt>Current branch</dt><dd>{confirmation.input.head.branch}</dd></>

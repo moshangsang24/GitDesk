@@ -502,6 +502,7 @@ pub async fn history_input(
         common_dir: location.common_dir.clone(),
         head,
         refs,
+        comparison: None,
     })
 }
 

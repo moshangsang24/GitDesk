@@ -47,13 +47,15 @@ pnpm tauri dev
 1. 用临时工作区和本地 bare remote 测试。点工具栏的当前分支，选择 **Create local branch**，确认基准提交。创建完成后再次打开分支选择器，用 **Switch existing** 切到新分支。
 2. 点 **Fetch**，选择远程并确认。检查远程跟踪引用、ahead/behind 和 **Releases** 里的 Fetch 时间。让测试远程暂时不可达再试一次，已有比例应保留并标记 **Stale**。
 3. 在配置了 upstream 的干净 worktree 中分别验证 **Pull** 和 **Push**。确认页列出 worktree、目标与远程主机。Pull 仅允许快进，Push 将确认的提交发到 upstream。构造分叉后，两项操作均拒绝改写现有提交。工具栏的历史图标可查看本会话最近 20 条操作结果。
+4. **Settings → Network** 为当前仓库选择 **Use Git settings**、**Direct (no proxy)** 或 **Custom proxy**。配置适用于该仓库的 HTTP(S) Fetch、Pull 和 Push，确认页显示生效的模式。内网可达时可选直连，外网仓库可选自己的代理。
 
 ### M4 Diff 和发布流转验收
 
 1. 在 **History** 点开合并提交，通过 **Compare parent** 比较两个父提交。选中文件后读取对应 Diff。哈希按钮复制完整提交 ID。
 2. 在 **Changes** 检查 Staged、Unstaged、Untracked 和 Conflicts。已暂存且又有修改的文件会在两个区各显示一份比较。选中文件后滚动 Patch，再修改同一文件，核对预览更新时保留滚动位置。若清理过滤器影响判断，状态栏会提示。工具栏的文件夹按钮可打开当前 worktree 的 Finder 或 Terminal。
-3. 在 **Releases** 用 **Configure targets** 选 Test、Staging、Prod 的远程跟踪分支。用 **Add task → Review commits vs origin/master** 查看当前任务分支的候选。用 `task/5111-period-causality-rework` 验证标题和任务号自动填入。也可以在 History 选中提交后点 **Track as task**，或在表单展开自定义范围。切换 Test 后，点击比例查看新结果和旧目标的历史观察。
-4. 在 History 的 **Show references** 菜单里勾选 **Release status**，查看逐提交状态。Releases 使用本地引用快照，主动 Fetch 完成后刷新快照和证据。[发布流转追踪](docs/RELEASE_TRACKING.md)
+3. 在 **Settings → Release branches** 为当前仓库选 Test、Staging、Master。进入 **History → Compare release targets**，点击任一方向的数字查看差异并定位提交。切换 worktree，验证比较起点随之变化。
+4. 用 **Releases → Add task → Review commits vs …** 查看以配置的 Master 为基线的候选。用 `fix/3704-poc` 验证标题和任务号自动填入。也可以在 History 选中提交后点 **Track as task**。点击阶段比例查看缺失项；如果目标上有 squash 提交，勾选原提交、粘贴目标完整 OID 并验证人工关联。切换 Test 后查看新结果及旧目标的历史观察。
+5. 在 History 的 **Show references** 菜单里勾选 **Release status**，查看逐提交状态。Releases 使用本地引用快照，主动 Fetch 完成后刷新快照和证据。[发布流转追踪](docs/RELEASE_TRACKING.md)
 
 ### M3 提交图验收
 

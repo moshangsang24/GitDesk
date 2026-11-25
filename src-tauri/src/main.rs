@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod clipboard;
 mod git;
 mod model;
 mod workspace;
@@ -15,6 +16,7 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            clipboard::write_clipboard_text,
             workspace::load_workspace,
             workspace::add_workspace,
             workspace::rescan_workspace,
@@ -24,6 +26,7 @@ fn main() {
             workspace::remove_repository,
             workspace::get_repository_snapshot,
             workspace::open_history,
+            workspace::compare_release_branches,
             workspace::list_commit_authors,
             workspace::load_history_page,
             workspace::close_history,
@@ -35,6 +38,8 @@ fn main() {
             workspace::review::cancel_review,
             workspace::review::open_worktree_location,
             workspace::operations::list_operation_remotes,
+            workspace::operations::get_repository_proxy,
+            workspace::operations::save_repository_proxy,
             workspace::operations::prepare_git_operation,
             workspace::operations::execute_git_operation,
             workspace::operations::cancel_git_operation,
@@ -42,6 +47,7 @@ fn main() {
             workspace::releases::get_release_overview,
             workspace::releases::save_release_targets,
             workspace::releases::save_release_task,
+            workspace::releases::edit_release_links,
             workspace::releases::delete_release_task,
             workspace::releases::list_release_observations,
             workspace::releases::release_candidates,

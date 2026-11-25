@@ -62,6 +62,8 @@ Apple Silicon 原生窗口已验证合并图、引用显隐、范围切换、跨
 - [x] M4.R1 迁移本地配置，保存每个仓库的阶段目标及版本。实现精确 ancestry、快照复核和未知状态，覆盖目标切换、缺失、浅克隆和并发刷新。
 - [x] M4.R2 实现 Releases、从分支生成并确认提交清单、任务版本与归档、按阶段聚合和有界历史观察。History 增加默认关闭的状态列，支持查看证据与定位提交。
 - [x] M4.R3 用临时仓库验收部分包含、跳过阶段、cherry-pick、revert、测试目标切换及历史观察。覆盖 linked worktree 和 History 的读取回归。
+- [x] M4.R4 在 Settings 共享仓库目标配置。History 从当前 worktree 比较发布目标并定位双向差异；Releases 可按阶段查看缺失项并保存人工提交关联。
+- [x] M4.R5 一条发布追踪记录可填写多个任务号。同一任务号可以出现在多条记录中，按任一任务号都能搜索。
 
 macOS 原生验收覆盖两个合并父提交、暂存与未暂存的同一文件、未跟踪文件、提交多选创建任务、按范围查看候选及切换测试目标。验收前后比对了临时仓库的引用、索引和工作文件。
 
@@ -104,6 +106,12 @@ macOS 原生验收覆盖两个合并父提交、暂存与未暂存的同一文�
 
 M1 可由单一 Agent 完成，减少 UI 风格割裂。之后按边界拆分：Workspace/Rust、Graph TS、History UI、Diff/Changes、Integration。每个任务声明允许改动的目录、接口、测试和禁止范围；先合并 `services/contracts.ts` 与 Rust DTO 契约，避免独立生成不兼容类型。若需要调整文档契约，先说明原因和影响，不要各 worktree 私自发明协议。各 worktree 统一遵守仓库根目录的 [AGENTS.md](../AGENTS.md)。
 
-## v0.2 候选（暂不实现）
+## 发布追踪后续计划
 
-Stage/Unstage/Commit、Merge/Cherry-pick、分支比较、Stash、批量 Fetch、Workspace dashboard、worktree 创建/管理。v0.3 可探索 Orca/Agent 任务关联、跨仓库变更总览；无需先引入 AI。每项另写安全与验收标准，再进入任务。
+- [ ] 下一小版优先做工作区发布总览。跨仓库展示正在追踪的任务，可筛选未进 Master、部分包含和数据过期。可按任务号汇总并展开各仓库的记录和缺失提交。多条记录共享任务号时保留各自的提交清单和发布证据。
+- [ ] 下一小版在建任务时标出标题中匹配任一已填任务号的候选。提供「只选匹配任务号」，用户可以继续手工调整选中的提交。
+- [ ] 在分支列表加入「对比发布目标」，直接查看所选分支和 Test、Staging、Master 两边各自独有的提交，无需切换 worktree。
+
+## 二期候选
+
+提交统计和提交时间线纳入二期。Stage、Unstage、Commit、Merge、Cherry-pick、Stash、批量 Fetch、worktree 创建与管理继续作为 v0.2 候选。v0.3 可探索 Orca 或 Agent 任务关联和跨仓库变更总览。进入开发前为各项补充验收标准。

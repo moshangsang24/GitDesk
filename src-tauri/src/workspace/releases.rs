@@ -7,8 +7,8 @@ use crate::{
     git::{
         diff,
         release::{
-            self, Candidates, Evaluation, Observation, ReleaseData, Targets, Task, TaskFields,
-            MAX_TASKS,
+            self, Candidates, CommitLink, Evaluation, Observation, ReleaseData, Targets, Task,
+            TaskFields, MAX_LINKS, MAX_TASKS,
         },
         repository,
     },
@@ -140,6 +140,7 @@ pub async fn save_release_task(
         return Err(Failure::invalid("Invalid task ID."));
     }
     edit.fields.normalize()?;
+    edit.fields.links.clear();
     let request = Request::start(&state, request_id)?;
     let git = state.git(&request.token).await?;
     let location = anchor(&state, git, &repo_id, &request.token).await?;
@@ -172,12 +173,14 @@ pub async fn save_release_task(
             if Some(task.revision) != edit.revision {
                 return Err(stale());
             }
-            let previous = std::mem::replace(&mut task.fields, edit.fields);
-            task.revisions.push(previous);
-            if task.revisions.len() > 10 {
-                task.revisions.remove(0);
-            }
-            task.revision += 1;
+            edit.fields.links = task
+                .fields
+                .links
+                .iter()
+                .filter(|link| edit.fields.commit_oids.contains(&link.source_oid))
+                .cloned()
+                .collect();
+            task.replace_fields(edit.fields);
         } else {
             if edit.revision.is_some() {
                 return Err(stale());
@@ -193,6 +196,130 @@ pub async fn save_release_task(
                 fields: edit.fields,
                 revisions: Vec::new(),
             });
+        }
+        Ok(())
+    })?;
+    Ok(overview(&store.value.releases[&repo_id]))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LinkEdit {
+    pub task_id: String,
+    pub revision: u64,
+    pub target_revision: u64,
+    pub stage: usize,
+    pub source_oids: Vec<String>,
+    pub target_oid: String,
+    pub expected_tip: Option<String>,
+    pub remove: bool,
+}
+
+#[tauri::command]
+pub async fn edit_release_links(
+    state: State<'_, WorkspaceState>,
+    repo_id: String,
+    mut edit: LinkEdit,
+    request_id: String,
+) -> Result<Overview> {
+    release::normalize_oids(&mut edit.source_oids)?;
+    diff::validate_oid(&edit.target_oid)?;
+    edit.target_oid.make_ascii_lowercase();
+    if edit.source_oids.contains(&edit.target_oid) {
+        return Err(Failure::invalid("Choose a different commit to associate."));
+    }
+    let request = Request::start(&state, request_id)?;
+    let target = {
+        let store = state.configuration.lock().unwrap();
+        registered(&store.value, &repo_id)?;
+        let data = store.value.releases.get(&repo_id).ok_or_else(stale)?;
+        if data.target_revision != edit.target_revision {
+            return Err(stale());
+        }
+        data.targets
+            .get(edit.stage)
+            .ok_or_else(|| Failure::invalid("Invalid release stage."))?
+            .clone()
+    };
+    if !edit.remove {
+        let target = target
+            .as_deref()
+            .ok_or_else(|| Failure::invalid("Configure the target branch first."))?;
+        let git = state.git(&request.token).await?;
+        let location = anchor(&state, git, &repo_id, &request.token).await?;
+        let refs = repository::read_refs(git, &location.anchor, &request.token).await?;
+        let tip = &release::remote_target(&refs, target)
+            .ok_or_else(stale)?
+            .target_oid;
+        if edit.expected_tip.as_deref() != Some(tip) {
+            return Err(stale());
+        }
+        diff::require_commit(git, &location.anchor, &edit.target_oid, &request.token).await?;
+        match git
+            .run(
+                Some(&location.anchor),
+                &["merge-base", "--is-ancestor", &edit.target_oid, tip],
+                &request.token,
+            )
+            .await
+        {
+            Ok(_) => {}
+            Err(error) if error.exit_code == Some(1) => {
+                return Err(Failure::invalid(
+                    "Git could not prove that this commit is in the selected target branch.",
+                ));
+            }
+            Err(error) => return Err(error),
+        }
+        let latest = repository::read_refs(git, &location.anchor, &request.token).await?;
+        if release::remote_target(&latest, target).map(|reference| &reference.target_oid)
+            != Some(tip)
+        {
+            return Err(stale());
+        }
+    }
+    let mut store = state.configuration.lock().unwrap();
+    store.update(|config| {
+        if request.token.is_cancelled() {
+            return Err(Failure::cancelled());
+        }
+        registered(config, &repo_id)?;
+        let data = config.releases.get_mut(&repo_id).ok_or_else(stale)?;
+        if data.target_revision != edit.target_revision {
+            return Err(stale());
+        }
+        let task = data
+            .tasks
+            .iter_mut()
+            .find(|task| task.id == edit.task_id && task.revision == edit.revision)
+            .ok_or_else(stale)?;
+        if edit
+            .source_oids
+            .iter()
+            .any(|oid| !task.fields.commit_oids.contains(oid))
+        {
+            return Err(Failure::invalid("Select original commits from this task."));
+        }
+        let mut fields = task.fields.clone();
+        for source_oid in edit.source_oids {
+            let link = CommitLink {
+                source_oid,
+                target_oid: edit.target_oid.clone(),
+            };
+            if edit.remove {
+                fields.links.retain(|existing| existing != &link);
+            } else if !fields.links.contains(&link) {
+                fields.links.push(link);
+            }
+        }
+        if fields.links.len() > MAX_LINKS {
+            return Err(Failure::invalid(
+                "This task has too many associated commits.",
+            ));
+        }
+        if task.fields.links != fields.links {
+            config.schema_version = 3;
+            task.replace_fields(fields);
         }
         Ok(())
     })?;
@@ -307,6 +434,8 @@ pub async fn evaluate_release(
         &location.common_dir,
         &targets,
         &oids,
+        task.as_ref()
+            .map_or(&[][..], |task| task.fields.links.as_slice()),
         &request.token,
     )
     .await?;

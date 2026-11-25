@@ -19,6 +19,12 @@ use crate::model::{Failure, Result};
 pub const OUTPUT_LIMIT: usize = 4 * 1024 * 1024;
 pub const READ_TIMEOUT: Duration = Duration::from_secs(12);
 
+#[derive(Clone, Copy)]
+pub enum WriteMode {
+    Local,
+    Network { ignore_no_proxy: bool },
+}
+
 pub struct Git {
     executable: PathBuf,
     slots: Arc<Semaphore>,
@@ -287,7 +293,7 @@ impl Git {
         &self,
         directory: &Path,
         args: &[&str],
-        network: bool,
+        mode: WriteMode,
         cancel: &CancellationToken,
     ) -> Result<()> {
         if cancel.is_cancelled() {
@@ -302,8 +308,11 @@ impl Git {
             .env_remove("SSH_ASKPASS")
             .env("SSH_ASKPASS_REQUIRE", "never")
             .env("GCM_INTERACTIVE", "Never");
-        if network {
+        if let WriteMode::Network { ignore_no_proxy } = mode {
             command.env("GIT_ALLOW_PROTOCOL", "file:git:http:https:ssh");
+            if ignore_no_proxy {
+                command.env_remove("NO_PROXY").env_remove("no_proxy");
+            }
         }
         let mut child = command
             .spawn()
@@ -339,7 +348,11 @@ impl Git {
             failure.exit_code = status.code();
             Err(failure)
         };
-        let duration = Duration::from_secs(if network { 180 } else { 45 });
+        let duration = Duration::from_secs(if matches!(mode, WriteMode::Network { .. }) {
+            180
+        } else {
+            45
+        });
         let interruption = tokio::select! {
             biased;
             result = timeout(duration, operation) => match result {
@@ -385,6 +398,30 @@ impl Git {
 
 fn write_failure(output: &str) -> Failure {
     let (code, message) = if [
+        "could not resolve proxy",
+        "failed to connect to proxy",
+        "proxy connect",
+        "connect tunnel failed",
+        "proxy authentication",
+        "failed to receive socks",
+    ]
+    .iter()
+    .any(|value| output.contains(value))
+    {
+        (
+            "PROXY_UNAVAILABLE",
+            "Git could not connect through the proxy. Check this repository’s proxy setting.",
+        )
+    } else if [
+        "ssl certificate problem",
+        "unable to get local issuer certificate",
+        "certificate verify failed",
+    ]
+    .iter()
+    .any(|value| output.contains(value))
+    {
+        ("TLS_CERTIFICATE", "Git could not verify the remote’s TLS certificate. Check your organization’s Git certificate configuration.")
+    } else if [
         "authentication failed",
         "could not read username",
         "permission denied (publickey",
@@ -435,6 +472,11 @@ fn write_failure(output: &str) -> Failure {
         "could not resolve host",
         "could not resolve hostname",
         "connection refused",
+        "failed to connect",
+        "couldn't connect to server",
+        "connection timed out",
+        "operation timed out",
+        "ssl_error_syscall",
         "does not appear to be a git repository",
     ]
     .iter()

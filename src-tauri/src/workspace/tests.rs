@@ -66,6 +66,167 @@ async fn start_history(
 }
 
 #[tokio::test]
+async fn compares_selected_worktree_to_release_targets_after_fetch() {
+    use crate::git::comparison::{self, Answer, Count, Direction, Query};
+
+    let temp = tempfile::tempdir().unwrap();
+    let repo = temp.path().join("repo");
+    let remote = temp.path().join("origin.git");
+    let peer = temp.path().join("peer");
+    let linked = temp.path().join("linked");
+    init(&repo, true);
+    fixture_git(&repo, &["branch", "-m", "master"]);
+    fixture_git(temp.path(), &["init", "--bare", path_string(&remote)]);
+    fixture_git(&repo, &["remote", "add", "origin", path_string(&remote)]);
+    fixture_git(&repo, &["push", "origin", "master"]);
+    fixture_git(
+        temp.path(),
+        &[
+            "clone",
+            "-b",
+            "master",
+            path_string(&remote),
+            path_string(&peer),
+        ],
+    );
+    fixture_git(
+        &repo,
+        &[
+            "worktree",
+            "add",
+            "-b",
+            "fix/42-snapshot",
+            path_string(&linked),
+        ],
+    );
+    fixture_git(&linked, &["commit", "--allow-empty", "-m", "My task"]);
+    let task_head = fixture_git(&linked, &["rev-parse", "HEAD"]);
+    fixture_git(
+        &repo,
+        &["update-ref", "refs/remotes/origin/release-test", &task_head],
+    );
+
+    let cancel = CancellationToken::new();
+    let git = Git::discover(None, &cancel).await.unwrap();
+    let location = repository::probe(&git, &repo, None, &cancel).await.unwrap();
+    let tree_id = path_id("tree", &fs::canonicalize(&linked).unwrap());
+    let targets = [
+        Some("refs/remotes/origin/release-test".into()),
+        Some("refs/remotes/origin/staging-missing".into()),
+        Some("refs/remotes/origin/master".into()),
+    ];
+    let snapshot = |input: &history::HistoryInput| {
+        comparison::Comparison::new(input, 9, targets.clone(), None)
+    };
+    let before = repository::history_input(&git, &location, &tree_id, &cancel)
+        .await
+        .unwrap();
+    let count = comparison::read(&git, &linked, &snapshot(&before), Query::Summary, &cancel)
+        .await
+        .unwrap();
+    assert!(matches!(
+        count,
+        Answer::Summary {
+            stages: [
+                Some(Count::Ready {
+                    ahead: 0,
+                    behind: 0
+                }),
+                None,
+                Some(Count::Ready {
+                    ahead: 1,
+                    behind: 0
+                })
+            ]
+        }
+    ));
+
+    fixture_git(&peer, &["commit", "--allow-empty", "-m", "Master one"]);
+    fixture_git(&peer, &["commit", "--allow-empty", "-m", "Master two"]);
+    fixture_git(&peer, &["push", "origin", "master"]);
+    fixture_git(&repo, &["fetch", "origin"]);
+    let mut after = repository::history_input(&git, &location, &tree_id, &cancel)
+        .await
+        .unwrap();
+    let comparison = snapshot(&after);
+    assert_ne!(comparison, snapshot(&before));
+    let count = comparison::read(&git, &linked, &comparison, Query::Summary, &cancel)
+        .await
+        .unwrap();
+    assert!(matches!(
+        count,
+        Answer::Summary {
+            stages: [
+                _,
+                None,
+                Some(Count::Ready {
+                    ahead: 1,
+                    behind: 2
+                })
+            ]
+        }
+    ));
+    let answer = comparison::read(
+        &git,
+        &linked,
+        &comparison,
+        Query::Commits {
+            stage: 2,
+            direction: Direction::Target,
+            offset: 0,
+        },
+        &cancel,
+    )
+    .await
+    .unwrap();
+    let Answer::Commits {
+        commits,
+        has_more: false,
+        ..
+    } = answer
+    else {
+        panic!("expected complete difference page");
+    };
+    assert_eq!(
+        commits
+            .iter()
+            .map(|commit| commit.subject.as_str())
+            .collect::<Vec<_>>(),
+        ["Master two", "Master one"]
+    );
+
+    let sessions = HistorySessions::default();
+    let (token, receiver) = sessions.start("comparison").unwrap();
+    after.comparison = Some(comparison);
+    let graph = history::open(
+        &git,
+        after,
+        HistoryScope::ReleaseTargets,
+        None,
+        None,
+        token,
+        receiver,
+    )
+    .await
+    .unwrap();
+    assert_eq!(graph.head.as_deref(), Some(task_head.as_str()));
+    assert_eq!(graph.page.commits.len(), 4);
+    assert!(commits.iter().all(|entry| graph
+        .page
+        .commits
+        .iter()
+        .any(|commit| commit.oid == entry.oid)));
+    for entry in graph.page.commits {
+        assert_eq!(
+            entry.parents,
+            fixture_git(&repo, &["show", "-s", "--format=%P", &entry.oid])
+                .split_whitespace()
+                .collect::<Vec<_>>()
+        );
+    }
+}
+
+#[tokio::test]
 async fn reads_real_merge_parents_and_respects_local_remote_and_exact_ref_scopes() {
     let temp = tempfile::tempdir().unwrap();
     let path = temp.path().join("merge");
@@ -897,7 +1058,7 @@ async fn release_evidence_tracks_exact_commits_and_independent_refs() {
     )
     .unwrap();
     assert_eq!(candidates["commits"].as_array().unwrap().len(), 2);
-    let observed = release::evaluate(&git, &repo, &common, &targets, &oids, &cancel)
+    let observed = release::evaluate(&git, &repo, &common, &targets, &oids, &[], &cancel)
         .await
         .unwrap();
     assert_eq!(observed[0].evidence[0].status, Inclusion::Included);
@@ -916,7 +1077,7 @@ async fn release_evidence_tracks_exact_commits_and_independent_refs() {
         None,
         targets[2].clone(),
     ];
-    let next = release::evaluate(&git, &repo, &common, &changed, &oids, &cancel)
+    let next = release::evaluate(&git, &repo, &common, &changed, &oids, &[], &cancel)
         .await
         .unwrap();
     assert!(next[0]
@@ -929,6 +1090,7 @@ async fn release_evidence_tracks_exact_commits_and_independent_refs() {
     fixture_git(&repo, &["switch", "-c", "rewritten", &base]);
     fixture_git(&repo, &["commit", "--allow-empty", "-m", "Separate parent"]);
     fixture_git(&repo, &["cherry-pick", &first]);
+    let rewritten = fixture_git(&repo, &["rev-parse", "HEAD"]);
     fixture_git(
         &repo,
         &["update-ref", "refs/remotes/origin/staging", "HEAD"],
@@ -955,12 +1117,62 @@ async fn release_evidence_tracks_exact_commits_and_independent_refs() {
         &linked_location.common_dir,
         &targets,
         &oids,
+        &[],
         &cancel,
     )
     .await
     .unwrap();
     assert_eq!(evaluated[1].evidence[0].status, Inclusion::NotContained);
     assert_eq!(evaluated[2].evidence[0].status, Inclusion::Included);
+    let links = [release::CommitLink {
+        source_oid: first.clone(),
+        target_oid: rewritten.clone(),
+    }];
+    let linked_evidence = release::evaluate(
+        &git,
+        &linked,
+        &linked_location.common_dir,
+        &targets,
+        &oids,
+        &links,
+        &cancel,
+    )
+    .await
+    .unwrap();
+    assert_eq!(linked_evidence[1].evidence[0].matched_oid, Some(rewritten));
+    assert_eq!(linked_evidence[1].evidence[0].status, Inclusion::Included);
+    assert_eq!(
+        linked_evidence[1].evidence[1].status,
+        Inclusion::NotContained
+    );
+    assert_eq!(linked_evidence[2].evidence[0].matched_oid, None);
+
+    fixture_git(&repo, &["switch", "-c", "squashed", &base]);
+    fixture_git(&repo, &["merge", "--squash", &second]);
+    fixture_git(&repo, &["commit", "-m", "Squashed task"]);
+    let squash = fixture_git(&repo, &["rev-parse", "HEAD"]);
+    fixture_git(
+        &repo,
+        &["update-ref", "refs/remotes/origin/staging", &squash],
+    );
+    let links: Vec<_> = oids
+        .iter()
+        .map(|oid| release::CommitLink {
+            source_oid: oid.clone(),
+            target_oid: squash.clone(),
+        })
+        .collect();
+    let linked_evidence = release::evaluate(&git, &repo, &common, &targets, &oids, &links, &cancel)
+        .await
+        .unwrap();
+    assert!(linked_evidence[1].evidence.iter().all(|evidence| {
+        evidence.status == Inclusion::Included && evidence.matched_oid.as_ref() == Some(&squash)
+    }));
+    assert_eq!(linked_evidence[0].evidence[0].matched_oid, None);
+    assert_eq!(
+        linked_evidence[0].evidence[1].status,
+        Inclusion::NotContained
+    );
 }
 
 #[tokio::test]
@@ -988,6 +1200,7 @@ async fn release_evidence_treats_shallow_negative_and_missing_objects_as_unknown
         &clone.join(".git"),
         &[Some("refs/remotes/origin/main".into()), None, None],
         &[tip, other, "f".repeat(40)],
+        &[],
         &cancel,
     )
     .await

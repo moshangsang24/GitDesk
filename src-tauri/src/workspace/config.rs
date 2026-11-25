@@ -1,5 +1,7 @@
 use crate::{
-    git::{operations::FetchRecord, release::ReleaseData, repository::Location},
+    git::{
+        operations::FetchRecord, proxy::RepositoryProxy, release::ReleaseData, repository::Location,
+    },
     model::{Failure, Result, Selection},
 };
 use serde::{Deserialize, Serialize};
@@ -62,6 +64,8 @@ pub struct Config {
     pub releases: BTreeMap<String, ReleaseData>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub fetch_activity: BTreeMap<String, BTreeMap<String, FetchRecord>>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub repository_proxies: BTreeMap<String, RepositoryProxy>,
 }
 
 impl Default for Config {
@@ -73,6 +77,7 @@ impl Default for Config {
             git_path: None,
             releases: BTreeMap::new(),
             fetch_activity: BTreeMap::new(),
+            repository_proxies: BTreeMap::new(),
         }
     }
 }
@@ -123,7 +128,7 @@ impl ConfigStore {
         };
 
         if serde_json::from_slice::<ConfigHeader>(&bytes)
-            .is_ok_and(|header| !matches!(header.schema_version, 1 | 2))
+            .is_ok_and(|header| !matches!(header.schema_version, 1..=3))
         {
             store.writable = false;
             store.warning =
@@ -133,7 +138,7 @@ impl ConfigStore {
 
         match serde_json::from_slice::<Config>(&bytes) {
             Ok(mut value) => {
-                value.schema_version = 2;
+                value.schema_version = value.schema_version.max(2);
                 store.value = value;
             }
             Err(_) => {
@@ -222,6 +227,53 @@ mod tests {
     }
 
     #[test]
+    fn keeps_legacy_task_ids_and_round_trips_overlapping_task_ids() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("workspaces.json");
+        let legacy = serde_json::json!({
+            "schemaVersion": 2,
+            "workspaces": [],
+            "releases": { "repo": {
+                "targetRevision": 0,
+                "targets": [null, null, null],
+                "tasks": [{ "id": "first", "revision": 1, "fields": {
+                    "title": "Existing task",
+                    "issue": "3848",
+                    "source": "fix/backend",
+                    "commitOids": ["a".repeat(40)],
+                    "archived": false
+                }}]
+            }}
+        });
+        fs::write(&path, serde_json::to_vec(&legacy).unwrap()).unwrap();
+        let mut store = ConfigStore::open(path.clone());
+        assert!(store.warning.is_none());
+        store
+            .update(|config| {
+                let tasks = &mut config.releases.get_mut("repo").unwrap().tasks;
+                let mut second = tasks[0].clone();
+                second.id = "second".into();
+                second.fields.issue = " 3848， 3745, 3848, ".into();
+                second.fields.normalize()?;
+                tasks.push(second);
+                Ok(())
+            })
+            .unwrap();
+
+        let reopened = ConfigStore::open(path);
+        assert!(reopened.warning.is_none());
+        assert_eq!(reopened.value.schema_version, 2);
+        let tasks = &reopened.value.releases["repo"].tasks;
+        assert_eq!(tasks[0].id, "first");
+        assert_eq!(tasks[0].fields.issue, "3848");
+        assert_eq!(tasks[1].id, "second");
+        assert_eq!(tasks[1].fields.issue, "3848, 3745");
+        let mut fields = tasks[1].fields.clone();
+        fields.issue = "x".repeat(121);
+        assert!(fields.normalize().is_err());
+    }
+
+    #[test]
     fn restores_selection_and_keeps_a_copy_of_bad_config() {
         let root = tempfile::tempdir().unwrap();
         let path = root.path().join("workspaces.json");
@@ -257,7 +309,7 @@ mod tests {
     fn preserves_a_newer_configuration_with_incompatible_fields() {
         let root = tempfile::tempdir().unwrap();
         let path = root.path().join("workspaces.json");
-        let newer = br#"{"schemaVersion":3,"workspaces":{"folders":[]},"releases":[]}"#;
+        let newer = br#"{"schemaVersion":4,"workspaces":{"folders":[]},"releases":[]}"#;
         fs::write(&path, newer).unwrap();
         let mut store = ConfigStore::open(path.clone());
         assert!(store.warning.as_deref().unwrap().contains("newer version"));

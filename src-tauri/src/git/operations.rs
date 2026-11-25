@@ -1,4 +1,10 @@
-use super::{diff, executor::Git, parse, repository};
+use super::{
+    diff,
+    executor::{Git, WriteMode},
+    parse,
+    proxy::RepositoryProxy,
+    repository,
+};
 use crate::model::{Failure, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -26,6 +32,7 @@ pub struct Plan {
     path: PathBuf,
     pub head: Head,
     target: Target,
+    proxy: RepositoryProxy,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -50,6 +57,18 @@ struct Remote {
     name: String,
     urls: Vec<String>,
     specs: Vec<Refspec>,
+}
+
+impl Remote {
+    fn uses_http(&self) -> bool {
+        self.urls[0].starts_with("https://") || self.urls[0].starts_with("http://")
+    }
+
+    fn proxy_override(&self, proxy: &RepositoryProxy) -> Option<String> {
+        proxy
+            .endpoint()
+            .map(|url| format!("remote.{}.proxy={url}", self.name))
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
@@ -79,6 +98,7 @@ pub struct Confirmation {
     target: String,
     remote: Option<String>,
     remote_host: Option<String>,
+    proxy_mode: Option<&'static str>,
     tracked_ref: Option<String>,
     commit: Option<String>,
     pub path: String,
@@ -93,6 +113,18 @@ pub struct FetchRecord {
 }
 
 impl Plan {
+    pub fn with_proxy(mut self, proxy: RepositoryProxy) -> Result<Self> {
+        let remote = match &self.target {
+            Target::Fetch(remote) => Some(remote),
+            Target::Pull(upstream) | Target::Push(upstream) => Some(&upstream.remote),
+            _ => None,
+        };
+        if remote.is_some_and(Remote::uses_http) {
+            self.proxy = proxy.normalize()?;
+        }
+        Ok(self)
+    }
+
     pub fn confirmation(&self) -> Confirmation {
         let (target, remote, tracked_ref, commit) = match &self.target {
             Target::Create(name) => (name, None, None, self.head.head.clone()),
@@ -115,6 +147,9 @@ impl Plan {
             target: target.clone(),
             remote: remote.map(|remote| remote.name.clone()),
             remote_host: remote.map(|remote| remote_host(&remote.urls[0])),
+            proxy_mode: remote
+                .filter(|remote| remote.uses_http())
+                .map(|_| self.proxy.mode()),
             tracked_ref,
             commit,
             path: self.path.to_string_lossy().into_owned(),
@@ -599,6 +634,7 @@ pub async fn prepare(
                 head: None,
             },
             target: Target::Fetch(remote),
+            proxy: RepositoryProxy::default(),
         });
     }
     if bare {
@@ -669,12 +705,28 @@ pub async fn prepare(
         }
         Action::Fetch { .. } => unreachable!(),
     };
-    Ok(Plan { path, head, target })
+    Ok(Plan {
+        path,
+        head,
+        target,
+        proxy: RepositoryProxy::default(),
+    })
 }
 
-async fn fetch(git: &Git, path: &Path, remote: &Remote, cancel: &CancellationToken) -> Result<()> {
+async fn fetch(
+    git: &Git,
+    path: &Path,
+    remote: &Remote,
+    proxy: &RepositoryProxy,
+    cancel: &CancellationToken,
+) -> Result<()> {
     let refspecs: Vec<_> = remote.specs.iter().map(Refspec::argument).collect();
-    let mut args = vec![
+    let proxy_override = remote.proxy_override(proxy);
+    let mut args = Vec::new();
+    if let Some(setting) = &proxy_override {
+        args.extend(["-c", setting]);
+    }
+    args.extend([
         "fetch",
         "--no-all",
         "--upload-pack=git-upload-pack",
@@ -690,9 +742,17 @@ async fn fetch(git: &Git, path: &Path, remote: &Remote, cancel: &CancellationTok
         "--refmap=",
         "--",
         &remote.name,
-    ];
+    ]);
     args.extend(refspecs.iter().map(String::as_str));
-    git.write(path, &args, true, cancel).await
+    git.write(
+        path,
+        &args,
+        WriteMode::Network {
+            ignore_no_proxy: matches!(proxy, RepositoryProxy::Custom { .. }),
+        },
+        cancel,
+    )
+    .await
 }
 
 async fn is_ancestor(
@@ -724,7 +784,7 @@ pub async fn execute(
 ) -> Result<()> {
     let path = &plan.path;
     match &plan.target {
-        Target::Fetch(remote) => fetch(git, path, remote, cancel).await,
+        Target::Fetch(remote) => fetch(git, path, remote, &plan.proxy, cancel).await,
         Target::Create(name) => {
             git.write(
                 path,
@@ -735,7 +795,7 @@ pub async fn execute(
                     name,
                     plan.head.head.as_deref().unwrap(),
                 ],
-                false,
+                WriteMode::Local,
                 cancel,
             )
             .await
@@ -751,7 +811,7 @@ pub async fn execute(
                     "--",
                     name,
                 ],
-                false,
+                WriteMode::Local,
                 cancel,
             )
             .await
@@ -759,27 +819,35 @@ pub async fn execute(
         Target::Push(upstream) => {
             let refspec = format!("{}:{}", plan.head.head.as_deref().unwrap(), upstream.source);
             let mirror = format!("remote.{}.mirror=false", upstream.remote.name);
+            let proxy_override = upstream.remote.proxy_override(&plan.proxy);
+            let mut args = Vec::new();
+            if let Some(setting) = &proxy_override {
+                args.extend(["-c", setting]);
+            }
+            args.extend([
+                "-c",
+                &mirror,
+                "push",
+                "--no-follow-tags",
+                "--receive-pack=git-receive-pack",
+                "--no-set-upstream",
+                "--no-recurse-submodules",
+                "--",
+                &upstream.remote.name,
+                &refspec,
+            ]);
             git.write(
                 path,
-                &[
-                    "-c",
-                    &mirror,
-                    "push",
-                    "--no-follow-tags",
-                    "--receive-pack=git-receive-pack",
-                    "--no-set-upstream",
-                    "--no-recurse-submodules",
-                    "--",
-                    &upstream.remote.name,
-                    &refspec,
-                ],
-                true,
+                &args,
+                WriteMode::Network {
+                    ignore_no_proxy: matches!(plan.proxy, RepositoryProxy::Custom { .. }),
+                },
                 cancel,
             )
             .await
         }
         Target::Pull(upstream) => {
-            fetch(git, path, &upstream.remote, cancel).await?;
+            fetch(git, path, &upstream.remote, &plan.proxy, cancel).await?;
             if clean_head(git, path, common, cancel).await? != plan.head {
                 return Err(stale());
             }
@@ -826,7 +894,7 @@ pub async fn execute(
                     "--",
                     tip,
                 ],
-                false,
+                WriteMode::Local,
                 cancel,
             )
             .await

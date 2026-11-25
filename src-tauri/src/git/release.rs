@@ -16,6 +16,7 @@ use tokio_util::sync::CancellationToken;
 
 pub const MAX_COMMITS: usize = 200;
 pub const MAX_TASKS: usize = 100;
+pub const MAX_LINKS: usize = MAX_COMMITS * 3;
 pub type Targets = [Option<String>; 3];
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -38,6 +39,15 @@ pub struct TaskFields {
     pub base_oid: Option<String>,
     pub head_oid: Option<String>,
     pub archived: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub links: Vec<CommitLink>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitLink {
+    pub source_oid: String,
+    pub target_oid: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -48,6 +58,17 @@ pub struct Task {
     pub fields: TaskFields,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub revisions: Vec<TaskFields>,
+}
+
+impl Task {
+    pub fn replace_fields(&mut self, fields: TaskFields) {
+        self.revisions
+            .push(std::mem::replace(&mut self.fields, fields));
+        if self.revisions.len() > 10 {
+            self.revisions.remove(0);
+        }
+        self.revision += 1;
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -73,6 +94,8 @@ pub struct Evidence {
     pub oid: String,
     pub status: Inclusion,
     pub reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub matched_oid: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -129,15 +152,23 @@ pub fn normalize_oids(oids: &mut Vec<String>) -> Result<()> {
 impl TaskFields {
     pub fn normalize(&mut self) -> Result<()> {
         self.title = self.title.trim().into();
-        if self.title.is_empty()
-            || self.title.len() > 240
-            || self.issue.len() > 120
-            || self.source.len() > 2048
-        {
+        if self.title.is_empty() || self.title.len() > 240 || self.source.len() > 2048 {
             return Err(Failure::invalid(
                 "Enter a task title and shorten any overly long fields.",
             ));
         }
+        let mut seen = HashSet::new();
+        let ids = self
+            .issue
+            .split([',', '，'])
+            .map(str::trim)
+            .filter(|id| !id.is_empty() && seen.insert(*id))
+            .collect::<Vec<_>>()
+            .join(", ");
+        if ids.len() > 120 {
+            return Err(Failure::invalid("Shorten the comma-separated task IDs."));
+        }
+        self.issue = ids;
         for oid in [&self.base_oid, &self.head_oid].into_iter().flatten() {
             validate_oid(oid)?;
         }
@@ -260,10 +291,16 @@ impl Evaluator<'_> {
             oid: oid.into(),
             status,
             reason: reason.map(str::to_owned),
+            matched_oid: None,
         })
     }
 
-    async fn check(&mut self, tip: &str, oids: &[String]) -> Result<Vec<Evidence>> {
+    async fn check(
+        &mut self,
+        tip: &str,
+        oids: &[String],
+        links: &[CommitLink],
+    ) -> Result<Vec<Evidence>> {
         if let Some(result) = self.by_tip.get(tip) {
             return Ok(result.clone());
         }
@@ -290,16 +327,43 @@ impl Evaluator<'_> {
             .filter(|oid| !oid.is_empty())
             .collect();
         let mut result = Vec::with_capacity(oids.len());
+        let mut checked_links = HashMap::new();
         for oid in oids {
-            if visited.contains(oid.as_bytes()) {
-                result.push(Evidence {
+            let mut original = if visited.contains(oid.as_bytes()) {
+                Evidence {
                     oid: oid.clone(),
                     status: Inclusion::Included,
                     reason: None,
-                });
+                    matched_oid: None,
+                }
             } else {
-                result.push(self.contains(oid, tip).await?);
+                self.contains(oid, tip).await?
+            };
+            if original.status != Inclusion::Included {
+                for link in links.iter().filter(|link| &link.source_oid == oid) {
+                    let replacement = if let Some(previous) = checked_links.get(&link.target_oid) {
+                        previous
+                    } else {
+                        let checked = self.contains(&link.target_oid, tip).await?;
+                        checked_links
+                            .entry(link.target_oid.clone())
+                            .or_insert(checked)
+                    };
+                    if replacement.status == Inclusion::Included {
+                        original.status = Inclusion::Included;
+                        original.reason = None;
+                        original.matched_oid = Some(link.target_oid.clone());
+                        break;
+                    }
+                    if replacement.status == Inclusion::Unknown
+                        && original.status == Inclusion::NotContained
+                    {
+                        original.status = Inclusion::Unknown;
+                        original.reason = Some("Git could not verify an associated commit.".into());
+                    }
+                }
             }
+            result.push(original);
         }
         self.by_tip.insert(tip.to_owned(), result.clone());
         Ok(result)
@@ -343,6 +407,7 @@ pub async fn evaluate(
     common: &Path,
     targets: &Targets,
     oids: &[String],
+    links: &[CommitLink],
     cancel: &CancellationToken,
 ) -> Result<Vec<Snapshot>> {
     if targets.iter().all(Option::is_none) {
@@ -389,7 +454,7 @@ pub async fn evaluate(
         if target.is_some() {
             for attempt in 0..2 {
                 if let Some(oid) = &snap.tip {
-                    snap.evidence = evaluator.check(oid, oids).await?;
+                    snap.evidence = evaluator.check(oid, oids, links).await?;
                 }
                 let latest = repository::read_refs(git, path, cancel).await?;
                 let head = tip(&latest);
@@ -493,6 +558,7 @@ mod tests {
                 base_oid: None,
                 head_oid: None,
                 archived: false,
+                links: Vec::new(),
             },
         };
         let first = Snapshot::from_tip(

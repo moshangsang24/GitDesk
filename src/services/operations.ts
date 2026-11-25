@@ -13,6 +13,14 @@ export const operationLabels = {
   push: 'Push',
 } as const;
 
+export type RepositoryProxy = { mode: 'git' } | { mode: 'direct' } | { mode: 'custom'; url: string };
+
+export const proxyLabels: Record<RepositoryProxy['mode'], string> = {
+  git: 'Use Git settings',
+  direct: 'Direct (no proxy)',
+  custom: 'Custom proxy',
+};
+
 export interface OperationInput {
   id: string;
   repoId: string;
@@ -25,6 +33,7 @@ export interface OperationConfirmation {
   target: string;
   remote: string | null;
   remoteHost: string | null;
+  proxyMode?: RepositoryProxy['mode'] | null;
   trackedRef: string | null;
   commit: string | null;
   path: string;
@@ -50,6 +59,8 @@ export interface OperationActions {
   execute(id: string): Promise<OperationOutcome>;
   cancel(id: string): Promise<void>;
   fetchActivity(repoId: string): Promise<FetchActivity>;
+  getProxy(repoId: string): Promise<RepositoryProxy>;
+  saveProxy(repoId: string, proxy: RepositoryProxy): Promise<RepositoryProxy>;
 }
 
 function matchRef(pattern: string, ref: string) {

@@ -1124,6 +1124,8 @@ name = "gitdesk"
 version = "0.1.1"
 dependencies = [
  "notify",
+ "objc2-app-kit",
+ "objc2-foundation",
  "rustix",
  "serde",
  "serde_json",

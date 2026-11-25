@@ -4,17 +4,27 @@ M4 提供只读试用。发布流转追踪回答指定提交是否已出现在�
 
 ## 配置目标分支
 
-在仓库的 **Releases → Configure targets** 中，为 Test、Staging、Production 分别选择一条已存在的远程跟踪分支。配置按逻辑仓库保存，同一仓库的多个 worktree 共享。仓库有对应引用时，可建议 `origin/test`、`origin/staging`、`origin/master`，由用户确认。可以选其他远程和实际分支，例如 `upstream/test/20261124`。每个阶段独立判断，可以只配置有用的阶段，也允许提交跳过 Test 直接进入 Production。
+在主 **Settings → Release branches** 中，为当前仓库的 Test、Staging、Master 分别选择一条远程跟踪分支。Releases 和 History 的 **Configure targets** 打开同一个表单。配置按逻辑仓库保存，同一仓库的多个 worktree 共享。Master 沿用原 Prod 槽位中保存的实际分支。仓库有对应引用时建议 `origin/test`、`origin/staging`、`origin/master`，由用户确认。可以搜索其他远程和实际分支，例如 `upstream/test/20261124`。各阶段独立判断，可仅配置使用中的阶段。
 
 配置保存精确的 `refs/remotes/<remote>/<branch>`。排除 `origin/HEAD` 一类别名，引用缺失时显示实际缺失项。更换轮次时显式选择新测试分支。目标变更递增配置版本，旧目标的结果保留在历史观察中，新目标根据自己的 tip 重新计算。
 
+## 在 History 比较分支
+
+在范围菜单选 **Compare release targets**。选中的 worktree HEAD 与配置目标的 tip 一起作为提交图入口。**Mine** 表示仅从当前 HEAD 可达的提交，**Target** 表示仅从该目标 tip 可达的提交。点击数字可定位首条差异并逐页查看同方向的差异清单。图按原有 Git 拓扑和 parent 边绘制。
+
+本机引用随 Fetch 或本地变动重新冻结。界面显示本机观察时间和覆盖各目标的 GitDesk Fetch 时间。Fetch 失败时标记引用过期。目标未配置、引用缺失、没有 HEAD 或浅历史无法比较时显示状态。
+
 ## 用任务追踪一组提交
 
-1. 在 History 选择一条或多条提交，使用 **Track as task**。也可以在 **Releases → Add task** 从一个任务分支生成候选。任务保存标题、可选任务号、来源分支或 worktree，以及确认后的完整提交 OID 清单。清单去重且不能为空。
-2. 在 **Add task** 点 **Review commits vs …**，用当前 worktree 的 HEAD 和按钮所示的基线查询。按 `origin/master`、本地 `master`、`origin/main`、本地 `main` 的顺序选已有引用。清单为空且候选完整时预选候选，保存前可取消勾选。已有清单会保留，截断的候选需手动选择。自定义范围仍可选择或输入 base 和 head 的完整 OID。用 `git log --topo-order --no-merges <base-oid>..<head-oid>` 列出最多 200 个候选，展示提交标题、作者和截断提示。同步其他分支带入的提交也可能出现，由用户勾选和增删。需要追踪 merge commit 自身时，可从 History 显式添加。
+1. 在 History 选择一条或多条提交，使用 **Track as task**。也可以在 **Releases → Add task** 从一个任务分支生成候选。任务保存标题、可选的多个任务号、来源分支或 worktree，以及确认后的完整提交 OID 清单。清单去重且不能为空。
+2. 在 **Add task** 点 **Review commits vs …**，用 Source 分支的 tip 和已配置的 Master 查询。Source 默认是当前 worktree 的分支，另选分支只读取该引用。Master 尚未配置时按 `origin/master`、本地 `master`、`origin/main`、本地 `main` 的顺序选已有引用。引用缺失时可以刷新或显式自定义范围。清单为空且候选完整时预选候选，保存前可取消勾选。切换 Source 会清掉上一个 Source 的候选选择，保留从 History 带入和独立手填的提交。截断的候选需手动选择。自定义范围仍可选择或输入 base 和 head 的完整 OID。用 `git log --topo-order --no-merges <base-oid>..<head-oid>` 列出最多 200 个候选，展示提交标题、作者和截断提示。同步其他分支带入的提交也可能出现，由用户勾选和增删。需要追踪 merge commit 自身时，可从 History 显式添加。
 3. 保存后始终按已确认的清单计算。源分支继续提交、被合并或删除后仍可查看任务。新增提交或 rebase 后替换提交时，先预览新旧清单，再保存为任务的新版本。归档后仍可查看证据，确认删除只移除 GitDesk 内的任务记录。
 
-新建任务从来源识别 `task/数字-任务名`，填入任务号和 `task: 任务名` 标题。可编辑建议值，修改来源时保留手填的字段。未提交的修改需要形成提交后才能加入任务。点击阶段单元格可以核对已包含、未包含和无法判断的提交，打开提交详情或定位 History。目标提交超出当前历史范围时，沿用 History 的范围切换提示。
+新建任务从来源识别 `前缀/数字-任务名`，填入任务号和 `前缀: 任务名` 标题。例如 `fix/3704-poc` 会填入任务号 `3704` 和标题 `fix: poc`。可编辑建议值，修改来源时保留手填的字段。未提交的修改需要形成提交后才能加入任务。点击阶段单元格可以核对已包含、未包含和无法判断的提交，打开提交详情或定位 History。目标提交超出当前历史范围时，沿用 History 的范围切换提示。
+
+在 **Task IDs** 用逗号填写多个任务号，例如 `3848, 3745`。支持中文逗号，同一条记录内重复的号码只保留一份。不同记录可使用同一个任务号，按任一号码搜索会找到所有匹配的记录。一条记录里的号码共用该记录的提交清单和发布进度。需要分别追踪进度时，可用同一分支建多条记录，各自确认提交清单。
+
+候选清单的 **Select all** 可以勾选或取消当前范围的所有候选，范围之外的手动选择会保留。截断时的 **Select all shown** 仅作用于已显示的候选。可在 **Edit commit IDs** 手填完整 OID。
 
 ## 证据和状态
 
@@ -30,7 +40,7 @@ M4 提供只读试用。发布流转追踪回答指定提交是否已出现在�
 
 任务单元格按阶段显示 `已包含数 / 任务提交数`，详情分列未包含、无法判断和计算中的条目。全部已包含时显示「已包含」。部分已包含时显示「部分包含」，未知项仍单独标明。只有所有提交均被证明未包含时，才显示「未包含原提交」。尚无已包含时，优先显示「计算中」，待计算结束后如仍有未知项则显示「无法判断」。目标未配置或引用缺失时，优先显示阶段状态。
 
-普通 merge 和 fast-forward 会保留原提交 OID。Cherry-pick、rebase 和 squash 可能引入新 OID，因此「未包含原提交」后仍可能需要人工核对补丁。Revert 后原提交仍可在祖先历史中出现。Releases 只报告本机 Git 观察到的历史包含关系。
+普通 merge 和 fast-forward 会保留原提交 OID。遇到 cherry-pick、rebase 或 squash，在目标阶段的详情中可勾选若干原提交并关联一个替代提交。GitDesk 校验该提交在选中目标的历史中；关联随任务修订保存，可撤销。各阶段独立验证替代提交，原提交直接包含时优先显示原证据。每条原提交最多计入一次，使用替代提交的行标记为人工核对并显示替代 OID。内容对应由用户核对。Revert 后原提交仍可在祖先历史中出现，发布部署状态由发布系统确认。
 
 ## 刷新与历史观察
 
@@ -43,11 +53,11 @@ M4 提供只读试用。发布流转追踪回答指定提交是否已出现在�
 | 对象 | 关键字段与用途 |
 | --- | --- |
 | `ReleaseProfile` | `repoId`、`targetRevision`、`test` / `staging` / `production` 到远程名及精确 ref 的映射 |
-| `TrackedTask` | `repoId`、`taskId`、标题、可选任务号及来源、可选 base/head OID、非空去重的 `commitOids`、`taskRevision`、归档状态 |
+| `TrackedTask` | `repoId`、内部记录 ID `taskId`、标题、可选的多个任务号及来源、可选 base/head OID、非空去重的 `commitOids`、`taskRevision`、归档状态 |
 | `StageSnapshot` | 阶段、实际目标、tip OID、`observedAt`、可空的 `lastAppFetchAt`、过期标记及原因 |
 | `ReleaseEvaluation` | 目标版本、可选任务版本、分阶段快照与逐提交状态。仓库和请求 ID 由对应 IPC 关联 |
 
-时间字段使用 Unix 毫秒。配置和任务按 `RepoId` 读写，采用带预期版本的类型化 GitService/IPC。保存只写 GitDesk 本地数据，沿用原子写入，保留有限的修订和观察元数据。任务删除前须确认。新配置没有已确认的目标时，显示未配置。详细存储和执行约束见 [技术架构](ARCHITECTURE.md)。
+时间字段使用 Unix 毫秒。配置和任务按 `RepoId` 读写，采用带预期版本的类型化 GitService/IPC。多个任务号以逗号分隔保存在现有 `issue` 字段中，已有单任务号可直接读取和编辑。保存只写 GitDesk 本地数据，沿用原子写入，保留有限的修订和观察元数据。任务删除前须确认。新配置没有已确认的目标时，显示未配置。详细存储和执行约束见 [技术架构](ARCHITECTURE.md)。
 
 每仓库最多保存 100 个任务，每任务最多跟踪 200 个提交并保留最近 10 个旧清单版本。Releases 顺序计算当前筛选下的任务，表格每页 12 个。History 按可见行分批计算，滚动时取消过期请求。同一次计算复用相同 tip 的结果。批量图遍历可证明遇到的 OID 已包含，未遇到的 OID 继续使用精确查询。切换仓库、任务或目标后，只显示匹配当前版本的证据。
 

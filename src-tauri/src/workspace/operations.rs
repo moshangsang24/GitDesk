@@ -3,6 +3,7 @@ use crate::{
     git::{
         executor::Git,
         operations::{self, Action, Confirmation, FetchRecord, Head, Plan},
+        proxy::RepositoryProxy,
         repository,
     },
     model::{Failure, Result},
@@ -155,6 +156,55 @@ async fn location(
 }
 
 #[tauri::command]
+pub fn get_repository_proxy(
+    state: State<'_, WorkspaceState>,
+    repo_id: String,
+) -> Result<RepositoryProxy> {
+    state.locations(&repo_id)?;
+    proxy_for(&state, &repo_id).normalize()
+}
+
+fn proxy_for(state: &WorkspaceState, repo_id: &str) -> RepositoryProxy {
+    state
+        .configuration
+        .lock()
+        .unwrap()
+        .value
+        .repository_proxies
+        .get(repo_id)
+        .cloned()
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+pub fn save_repository_proxy(
+    state: State<'_, WorkspaceState>,
+    repo_id: String,
+    proxy: RepositoryProxy,
+) -> Result<RepositoryProxy> {
+    let proxy = proxy.normalize()?;
+    let mut store = state.configuration.lock().unwrap();
+    store.update(|config| {
+        if !config
+            .workspaces
+            .iter()
+            .flat_map(|workspace| workspace.locations())
+            .any(|location| location.id() == repo_id)
+        {
+            return Err(Failure::invalid("This repository is no longer registered."));
+        }
+        if proxy == RepositoryProxy::Git {
+            config.repository_proxies.remove(&repo_id);
+        } else {
+            config.schema_version = 3;
+            config.repository_proxies.insert(repo_id, proxy.clone());
+        }
+        Ok(())
+    })?;
+    Ok(proxy)
+}
+
+#[tauri::command]
 pub async fn list_operation_remotes(
     state: State<'_, WorkspaceState>,
     repo_id: String,
@@ -192,7 +242,8 @@ pub async fn prepare_git_operation(
         &input.head,
         &cancel,
     )
-    .await?;
+    .await?
+    .with_proxy(proxy_for(&state, &input.repo_id))?;
     let confirmation = plan.confirmation();
     state.operations.save(Preview {
         expires: Instant::now() + Duration::from_secs(120),
@@ -222,8 +273,9 @@ pub async fn execute_git_operation(
     let git = state.git(cancel).await?;
     let (path, common, bare) =
         location(&state, git, &input.repo_id, &input.worktree_id, cancel).await?;
-    let plan =
-        operations::prepare(git, path, &common, bare, &input.action, &input.head, cancel).await?;
+    let plan = operations::prepare(git, path, &common, bare, &input.action, &input.head, cancel)
+        .await?
+        .with_proxy(proxy_for(&state, &input.repo_id))?;
     if common != preview.common || plan != preview.plan {
         return Err(operations::stale());
     }
@@ -307,7 +359,7 @@ mod tests {
         git.write(
             &path,
             &["remote", "add", "origin", "../local.git"],
-            false,
+            crate::git::executor::WriteMode::Local,
             &cancel,
         )
         .await

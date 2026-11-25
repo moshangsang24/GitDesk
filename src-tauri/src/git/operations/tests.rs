@@ -1,5 +1,13 @@
 use super::*;
-use std::{fs, os::unix::fs::PermissionsExt, process::Command, time::Duration};
+use std::{
+    fs,
+    io::{BufRead, BufReader, Write},
+    net::TcpListener,
+    os::unix::fs::PermissionsExt,
+    process::Command,
+    thread,
+    time::{Duration, Instant},
+};
 
 fn cli(path: &Path, args: &[&str]) -> String {
     let result = Command::new("git")
@@ -177,6 +185,90 @@ async fn creates_and_switches_local_branches_with_worktree_guards() {
     assert_eq!(
         repo.plan(&Action::Push).await.unwrap_err().code,
         "NO_UPSTREAM"
+    );
+}
+
+#[tokio::test]
+async fn fetch_honors_direct_and_custom_http_proxy_modes() {
+    fn http_endpoint() -> (String, thread::JoinHandle<String>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap().to_string();
+        listener.set_nonblocking(true).unwrap();
+        let server = thread::spawn(move || {
+            let deadline = Instant::now() + Duration::from_secs(6);
+            loop {
+                match listener.accept() {
+                    Ok((mut socket, _)) => {
+                        socket
+                            .set_read_timeout(Some(Duration::from_secs(2)))
+                            .unwrap();
+                        let mut request = String::new();
+                        BufReader::new(&socket).read_line(&mut request).unwrap();
+                        socket.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").unwrap();
+                        return request;
+                    }
+                    Err(error)
+                        if error.kind() == std::io::ErrorKind::WouldBlock
+                            && Instant::now() < deadline =>
+                    {
+                        thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(error) => panic!("HTTP fixture did not receive a request: {error}"),
+                }
+            }
+        });
+        (address, server)
+    }
+
+    let repo = Fixture::new().await;
+    let (remote_addr, remote) = http_endpoint();
+    let (proxy_addr, proxy) = http_endpoint();
+    cli(
+        &repo.path,
+        &[
+            "remote",
+            "set-url",
+            "origin",
+            &format!("http://{remote_addr}/repo"),
+        ],
+    );
+    cli(
+        &repo.path,
+        &["config", "remote.origin.proxy", "http://127.0.0.1:9"],
+    );
+    let plan = repo
+        .plan(&Action::Fetch {
+            remote: "origin".into(),
+        })
+        .await
+        .unwrap();
+    assert_eq!(plan.confirmation().proxy_mode, Some("git"));
+    let direct = plan.clone().with_proxy(RepositoryProxy::Direct).unwrap();
+    let custom = plan
+        .with_proxy(RepositoryProxy::Custom {
+            url: format!("http://{proxy_addr}"),
+        })
+        .unwrap();
+    assert_ne!(direct, custom);
+    assert_eq!(direct.confirmation().proxy_mode, Some("direct"));
+    assert_eq!(custom.confirmation().proxy_mode, Some("custom"));
+    for plan in [direct, custom] {
+        // The fixture serves 404 to inspect the route without mutating refs.
+        assert!(execute(&repo.git, &repo.common, &plan, &repo.token)
+            .await
+            .is_err());
+    }
+    assert!(remote.join().unwrap().starts_with("GET /repo/info/refs?"));
+    assert!(proxy
+        .join()
+        .unwrap()
+        .starts_with(&format!("GET http://{remote_addr}/repo/info/refs?")));
+    assert_eq!(
+        cli(
+            &repo.path,
+            &["config", "--local", "--get", "remote.origin.proxy"]
+        ),
+        "http://127.0.0.1:9"
     );
 }
 

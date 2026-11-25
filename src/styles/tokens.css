@@ -6,28 +6,27 @@
  */
 :root {
   color-scheme: light;
-  --wash-tint: rgb(120 150 255 / .24);
-  --bg-window: #e3e8f1;
+  --wash-tint: rgb(121 162 242 / .24);
+  --bg-window: #e8edf5;
   --window-wash:
     radial-gradient(900px 620px at 0% 0%, var(--wash-tint), transparent 65%),
-    radial-gradient(700px 620px at 0% 100%, rgb(190 130 255 / .16), transparent 62%),
-    radial-gradient(820px 520px at 100% 0%, rgb(90 200 200 / .12), transparent 60%);
-  --glass: rgb(255 255 255 / .36);
+    radial-gradient(700px 620px at 0% 100%, rgb(168 161 220 / .13), transparent 62%),
+    radial-gradient(820px 520px at 100% 0%, rgb(111 195 215 / .10), transparent 60%);
+  --glass: rgb(255 255 255 / .42);
   --glass-line: rgb(255 255 255 / .65);
   --glass-chip: rgb(255 255 255 / .62);
   --sidebar-selected: rgb(255 255 255 / .82);
   --pill-shadow: 0 1px 2px rgb(20 30 60 / .12);
   --card-shadow: 0 0 0 1px rgb(20 30 70 / .07), 0 12px 36px -12px rgb(30 40 90 / .28);
-  --accent-gradient: linear-gradient(90deg, #4f7cff, #a96cf0);
   --bg-chrome: #e6eaf0;
   --bg-sidebar: #eceff4;
   --bg-main: #ffffff;
-  --bg-row-alt: #f8f9fb;
+  --bg-row-alt: #fbfcfe;
   --bg-panel: #f7f9fb;
   --bg-elevated: #edf1f6;
   --bg-control: #e7ecf3;
   --bg-hover: #eef2f8;
-  --bg-selected: #dce7fb;
+  --bg-selected: #edf3ff;
   --bg-selected-inactive: #e6e9ef;
   --selection-indicator: #8a99ad;
   --border: #c3cdd9;
@@ -36,6 +35,7 @@
   --text-secondary: #43536a;
   --text-muted: #56667b;
   --accent: #2858c8;
+  --accent-contrast: #fff;
   --success: #216848;
   --warning: #88520e;
   --danger: #a13b4e;
@@ -74,7 +74,6 @@
   --sidebar-selected: rgb(255 255 255 / .09);
   --pill-shadow: 0 1px 2px rgb(0 0 0 / .4);
   --card-shadow: 0 0 0 1px rgb(255 255 255 / .07), 0 18px 44px -14px rgb(0 0 0 / .75);
-  --accent-gradient: linear-gradient(90deg, #7fa8ff, #c08cff);
   --bg-chrome: #15171c;
   --bg-sidebar: #17191e;
   --bg-main: #1d2026;
@@ -92,6 +91,7 @@
   --text-secondary: #a3aebe;
   --text-muted: #97a2b4;
   --accent: #7fa8ff;
+  --accent-contrast: #141923;
   --success: #7dc7a4;
   --warning: #e5aa65;
   --danger: #eb98a0;
@@ -116,29 +116,23 @@
 
 /*
  * Accent colours. Blue is the default (above); each alternative sets the accent,
- * the focused selection, the active-tab gradient and the window wash tint.
+ * the focused selection and the window wash tint.
  */
 :root[data-accent='violet'] {
   --accent: #6a3fd2; --bg-selected: #ebe4fc; --wash-tint: rgb(150 110 255 / .24);
-  --accent-gradient: linear-gradient(90deg, #7b5cff, #c06cf0);
 }
 :root[data-accent='teal'] {
   --accent: #0a7069; --bg-selected: #d8f0ed; --wash-tint: rgb(60 200 185 / .22);
-  --accent-gradient: linear-gradient(90deg, #12a594, #2b9fd9);
 }
 :root[data-accent='rose'] {
   --accent: #b8305f; --bg-selected: #fbe3ec; --wash-tint: rgb(255 120 160 / .22);
-  --accent-gradient: linear-gradient(90deg, #e0457b, #f08a5d);
 }
 :root[data-theme='dark'][data-accent='violet'] {
   --accent: #b69cff; --bg-selected: #33285a; --wash-tint: rgb(120 70 230 / .30);
-  --accent-gradient: linear-gradient(90deg, #a78bfa, #e09cff);
 }
 :root[data-theme='dark'][data-accent='teal'] {
   --accent: #4fd6c6; --bg-selected: #173d3d; --wash-tint: rgb(20 150 140 / .28);
-  --accent-gradient: linear-gradient(90deg, #4fd6c6, #6fb8ff);
 }
 :root[data-theme='dark'][data-accent='rose'] {
   --accent: #ff8db5; --bg-selected: #4a2236; --wash-tint: rgb(200 60 120 / .28);
-  --accent-gradient: linear-gradient(90deg, #ff8db5, #ffb38a);
 }

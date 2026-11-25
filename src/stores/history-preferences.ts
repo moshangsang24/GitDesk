@@ -17,7 +17,7 @@ export function readHistoryPreferences(repoId: string): HistoryPreferences {
     const filter = saved.authorFilter;
     const authorFilter = typeof filter?.baseRef === 'string' && !!filter.baseRef && typeof filter.author?.name === 'string'
       && !!filter.author.name && typeof filter.author.email === 'string' ? filter : null;
-    const scope = saved.scope === 'current' || saved.scope === 'local' || (saved.scope === 'ref' && focusedRef)
+    const scope = saved.scope === 'current' || saved.scope === 'local' || saved.scope === 'releaseTargets' || (saved.scope === 'ref' && focusedRef)
       || (saved.scope === 'mine' && authorFilter) ? saved.scope : 'all';
     return { scope, focusedRef, authorFilter, refVisibility: { local: saved.refVisibility?.local !== false, remote: saved.refVisibility?.remote !== false } };
   } catch {

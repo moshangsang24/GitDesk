@@ -33,7 +33,7 @@ export function RepositoryToolbar({ repo, worktree, refs }: { repo: Repository; 
       </div>
       <div className="repo-toolbar-actions">
         <div className="repo-git-actions" role="group" aria-label="Git synchronization">
-          <button className="control" disabled={!!disabled} title={disabled ?? 'Fetch a remote'} onClick={() => setPanel('fetch')}><ArrowDownToLine size={13} /> Fetch</button>
+          <button className="control fetch-action" disabled={!!disabled} title={disabled ?? 'Fetch a remote'} onClick={() => setPanel('fetch')}><ArrowDownToLine size={13} /> Fetch</button>
           <button className="control" disabled={!!syncDisabled} title={syncDisabled ?? 'Pull fast-forward only'} onClick={() => setPanel('pull')}><ArrowDown size={13} /> Pull</button>
           <button className="control" disabled={!!syncDisabled} title={syncDisabled ?? 'Push to the upstream branch'} onClick={() => setPanel('push')}><ArrowUp size={13} /> Push</button>
         </div>
